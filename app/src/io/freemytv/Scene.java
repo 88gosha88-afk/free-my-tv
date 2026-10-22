@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.RuntimeShader;
@@ -88,7 +87,7 @@ final class Scene {
     /** Call after changing `palette`. Bright palettes are dimmed a little so white text stays readable. */
     void applyPalette() {
         push();
-        fallback.setShader(new LinearGradient(0, 0, 0, h, palette.color(1), palette.color(0), Shader.TileMode.CLAMP));
+        if (aurora == null) fallback.setShader(Ui.gradient(h, palette.color(1), palette.color(0)));
     }
 
     private void push() {
