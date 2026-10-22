@@ -109,6 +109,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private final Paint glassPaint = new Paint();
     private final Set<String> failed = new HashSet<>();     // Recs.key: a movie and a series can have the same ID
     private RuntimeShader glassShader;
+    /** What the screensaver shows: the picks' photos, the clock over the aurora, or the clock over a video (VIDEO). */
+    static final int PHOTOS = 0, CLOCK = 1, VIDEO = 2;
+    private int mode = PHOTOS;
+    private String caption = "";    // VIDEO: the place the clip was filmed
     private boolean running, dirty = true, chromeDirty = true;
     private boolean fallback;       // the aurora with the clock (no photos)
     private boolean decoding;
@@ -129,8 +133,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         @Override public void run() {
             if (!running) return;
             data.refreshIfStale();
-            recs.refreshIfStale();
-            recs.prefetchAll();
+            if (mode == PHOTOS) {
+                recs.refreshIfStale();
+                recs.prefetchAll();
+            }
             dirty = true;
             chromeDirty = true;
             prepareNext();
@@ -164,12 +170,14 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         startedAt = clock();
         lastFrame = 0;
         failed.clear();
-        fallback = recs.showcase().isEmpty();
+        fallback = mode != PHOTOS || recs.showcase().isEmpty();
         data.addListener(this);
         recs.addListener(this);
         data.refreshIfStale();
-        recs.refreshIfStale();
-        recs.prefetchAll();
+        if (mode == PHOTOS) {
+            recs.refreshIfStale();
+            recs.prefetchAll();
+        }
         prepareNext();
         handler.postDelayed(tick, 60_000);
         Choreographer.getInstance().postFrameCallback(this);
@@ -246,17 +254,43 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         for (Paint p : new Paint[] {cornerDate, cornerQuote, cornerStale, cornerClock, labelPaint, titlePaint, metaPaint}) {
             p.setShadowLayer(18 * k, 0, 2 * k, 0x66000000);
         }
+        // Over a video the text needs its own shadow, since there is no dark aurora behind it.
+        for (Paint p : new Paint[] {datePaint, clockPaint, weatherPaint, weatherDim, quotePaint, stalePaint}) {
+            p.setShadowLayer(mode == VIDEO ? 22 * k : 0, 0, 2 * k, mode == VIDEO ? 0x80000000 : 0);
+        }
         glassFor = "";
         dirty = true;
         chromeDirty = true;
         for (Slide s : new Slide[] {current, incoming, prepared}) if (s != null) recordCaption(s);
     }
 
+    /** Switches what the screensaver shows (before start, or, when a video can't play, to the clock). */
+    void setMode(int m) {
+        if (mode == m) return;
+        mode = m;
+        fallback = m != PHOTOS || (running && recs.showcase().isEmpty());
+        if (w > 0) {
+            // Paints get their shadow in onSizeChanged: set it again for the new mode.
+            for (Paint p : new Paint[] {datePaint, clockPaint, weatherPaint, weatherDim, quotePaint, stalePaint}) {
+                if (p != null) p.setShadowLayer(m == VIDEO ? 22 * k : 0, 0, 2 * k, m == VIDEO ? 0x80000000 : 0);
+            }
+        }
+        dirty = true;
+        chromeDirty = true;
+        invalidate();
+    }
+
+    /** VIDEO: the place the current clip was filmed, shown small in the bottom left corner. */
+    void setCaption(String place) {
+        caption = place == null ? "" : place;
+        invalidate();
+    }
+
     // MARK: - Photos
 
     /** Loads the next photo in the background (one at a time); once ready, it comes in at the right moment. */
     private void prepareNext() {
-        if (!running || decoding || prepared != null) return;
+        if (!running || decoding || prepared != null || mode != PHOTOS) return;
         List<Recs.Pick> list = recs.showcase();
         if (list.isEmpty()) return;
         Slide last = incoming != null ? incoming : current;
@@ -417,6 +451,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             date = Ui.date(now);
             dirty = true;
             chromeDirty = true;
+        }
+        if (mode == VIDEO) {
+            drawVideoOverlay(canvas, up);
+            return;
         }
         if (running) advance(up);
         if (!glassFor.equals(clock)) buildGlass(clock);
@@ -739,6 +777,27 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         content.setTranslationY((float) (26 * k * Math.sin(2 * phase + 0.7)));
         content.setAlpha(alpha);
         content.draw(canvas);
+    }
+
+    /** The clock, the weather and the prices over a video: nothing opaque, only a light scrim and the text's shadow. */
+    private void drawVideoOverlay(Canvas canvas, long up) {
+        canvas.drawColor(0x2E000000);
+        if (dirty) {
+            Canvas rc = content.beginRecording(w, h);
+            try {
+                drawContent(rc);
+            } finally {
+                content.endRecording();
+            }
+            dirty = false;
+        }
+        float t = (up - startedAt) / 1000f;
+        double phase = 2 * Math.PI * t / DRIFT_PERIOD_S;
+        content.setTranslationX((float) (40 * k * Math.sin(phase)));
+        content.setTranslationY((float) (26 * k * Math.sin(2 * phase + 0.7)));
+        content.setAlpha(1f);
+        content.draw(canvas);
+        if (!caption.isEmpty() && metaPaint != null) canvas.drawText(caption, 96 * k, h - 72 * k, metaPaint);
     }
 
     private void drawContent(Canvas c) {

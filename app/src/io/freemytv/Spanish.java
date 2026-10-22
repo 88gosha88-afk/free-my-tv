@@ -102,6 +102,9 @@ final class Spanish {
             case "No city with that name.": return "Ninguna ciudad con ese nombre.";
             case "Couldn't search now: ": return "No se pudo buscar ahora: ";
             case "Quotes widget": return "Widget de cotizaciones";
+            case "Apple aerials": return "Vídeos de Apple";
+            case "Picks' photos": return "Fotos de las sugerencias";
+            case "Clock only": return "Solo el reloj";
             case "On": return "Activado";
             case "Off": return "Desactivado";
             case "Shelf": return "Estante";

@@ -109,6 +109,9 @@ final class Russian {
             case "No city with that name.": return "Город с таким названием не найден.";
             case "Couldn't search now: ": return "Не удалось выполнить поиск: ";
             case "Quotes widget": return "Виджет котировок";
+            case "Apple aerials": return "Видео Apple";
+            case "Picks' photos": return "Фото подборок";
+            case "Clock only": return "Только часы";
             case "On": return "Вкл.";
             case "Off": return "Выкл.";
             case "Shelf": return "Избранные приложения";

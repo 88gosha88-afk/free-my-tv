@@ -81,6 +81,14 @@ final class Prefs {
 
     static void setTheme(String v) { put("theme", v); }
 
+    /** The screensaver: "aerial" (Apple's aerial videos), "photos" (the picks' photos) or "clock" (over the aurora). */
+    static String screensaver() {
+        String v = sp().getString("screensaver", "aerial");
+        return v.equals("photos") || v.equals("clock") ? v : "aerial";
+    }
+
+    static void setScreensaver(String v) { put("screensaver", v); }
+
     // MARK: - City
 
     static String city() { return sp().getString("city", Config.CITY).trim(); }
