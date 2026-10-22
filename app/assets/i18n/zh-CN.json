@@ -109,6 +109,7 @@
  "TCL remote buttons: on this TV they work as always.": "TCL 遥控器按键：在这台电视上照常工作。",
  "THIS AFTERNOON": "今天下午看",
  "THIS MORNING": "今天上午看",
+ "TMDB has none of the TV's apps for tmdb_region={region}.": "tmdb_region={region} 时，TMDB 中没有这台电视的应用。",
  "TONIGHT": "今晚看",
  "TV Settings": "电视设置",
  "Tabii button": "Tabii 键",

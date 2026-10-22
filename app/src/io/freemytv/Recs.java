@@ -96,7 +96,9 @@ final class Recs {
         SERVICE_NAME.put("oneplay", "Oneplay");
     }
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
-    private static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
+    static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
+    /** The error when TMDB lists none of the TV's streaming apps in REGION: the settings say so in words. */
+    static final String NO_APPS = "none of the TV's streaming services are on TMDB";
 
     private static Recs instance;
 
@@ -391,7 +393,7 @@ final class Recs {
             String[] s = service(o.optString("provider_name"));
             if (s != null && installed(s[2])) services.put(o.getInt("provider_id"), s);
         }
-        if (services.isEmpty()) throw new IOException("none of the TV's streaming services are on TMDB");
+        if (services.isEmpty()) throw new IOException(NO_APPS);
         StringBuilder ids = new StringBuilder();
         for (int id : services.keySet()) ids.append(ids.length() == 0 ? "" : "|").append(id);
         String common = "&language=" + lang() + "&watch_region=" + REGION + "&with_watch_monetization_types=flatrate&include_adult=false"

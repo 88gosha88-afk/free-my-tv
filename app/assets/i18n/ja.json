@@ -109,6 +109,7 @@
  "TCL remote buttons: on this TV they work as always.": "TCLリモコンのボタン：このテレビでは従来通り動作します。",
  "THIS AFTERNOON": "今日の午後のおすすめ",
  "THIS MORNING": "今朝のおすすめ",
+ "TMDB has none of the TV's apps for tmdb_region={region}.": "tmdb_region={region} では、TMDBにこのテレビのアプリがありません。",
  "TONIGHT": "今夜のおすすめ",
  "TV Settings": "テレビの設定",
  "Tabii button": "Tabiiボタン",

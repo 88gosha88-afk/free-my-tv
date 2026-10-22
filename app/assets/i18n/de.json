@@ -109,6 +109,7 @@
  "TCL remote buttons: on this TV they work as always.": "TCL-Fernbedienung: Die Tasten funktionieren hier wie immer.",
  "THIS AFTERNOON": "HEUTE NACHMITTAG",
  "THIS MORNING": "HEUTE MORGEN",
+ "TMDB has none of the TV's apps for tmdb_region={region}.": "TMDB kennt keine App des Fernsehers für tmdb_region={region}.",
  "TONIGHT": "HEUTE ABEND",
  "TV Settings": "TV-Einstellungen",
  "Tabii button": "Tabii-Taste",

@@ -109,6 +109,7 @@
  "TCL remote buttons: on this TV they work as always.": "TCL-kaukosäätimen painikkeet toimivat tässä TV:ssä ennallaan.",
  "THIS AFTERNOON": "TÄLLE ILTAPÄIVÄLLE",
  "THIS MORNING": "TÄLLE AAMULLE",
+ "TMDB has none of the TV's apps for tmdb_region={region}.": "TMDB ei tunne TV:n sovelluksia, kun tmdb_region={region}.",
  "TONIGHT": "TÄLLE ILLALLE",
  "TV Settings": "TV:n asetukset",
  "Tabii button": "Tabii-painike",
