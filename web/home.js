@@ -133,11 +133,11 @@
 
   // MARK: - Focus
 
-  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit'};
-  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0};
+  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit', LANG: 'lang'};
+  var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0, lang: 0};
   var cards = [];
 
-  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT; }
+  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT || st.zone === Z.LANG; }
 
   function updateFocus() {
     var i, list;
@@ -161,6 +161,8 @@
     $('apps').lastChild.style.webkitTransform = $('apps').lastChild.style.transform = 'translateY(' + (-first * 239) + 'px)';
     focusRows($('settings'), st.row, st.zone === Z.SETTINGS);
     focusRows($('shelfedit'), st.edit, st.zone === Z.EDIT);
+    focusRows($('langpick'), st.lang, st.zone === Z.LANG);
+    if (langHint) langHint.textContent = (st.lang + 1) + ' / ' + languageChoices().length + '  ·  ' + tr('OK picks, Back cancels.');
     setClass(body, 'drawer-open', st.zone === Z.DRAWER);
   }
 
@@ -455,6 +457,8 @@
     setClass($('apps'), 'open', false);
     setClass($('settings'), 'open', false);
     setClass($('shelfedit'), 'open', false);
+    setClass($('langpick'), 'open', false);
+    langHint = null;
     st.zone = Z.SHELF;
     updateFocus();
   }
@@ -462,11 +466,11 @@
   // MARK: - Home Settings
 
   function settingRows() {
-    var lang = Prefs.language(), unit = Prefs.temperature(), theme = Prefs.theme();
-    var auto = tr('Automatic'), choices = ['auto'].concat(I18N.languages()), picked = lang === 'auto' ? lang : I18N.lang;
+    var unit = Prefs.temperature(), theme = Prefs.theme();
+    var auto = tr('Automatic'), picked = pickedLanguage();
     var rows = [
-      {label: tr('Language'), value: picked === 'auto' ? auto : I18N.languageName(picked),
-        step: function (d) { cycle('language', choices, picked, d); I18N.set(Prefs.language()); renderAll(); }},
+      {label: tr('Language'), value: picked === 'auto' ? auto : I18N.languageName(picked), opens: true,
+        step: function (d) { if (d >= 0) openLanguages(); }},
       {label: tr('Temperature'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : tr('unit|Automatic'),
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
       {label: tr('Theme'), value: theme === 'light' ? tr('Light') : theme === 'dark' ? tr('Dark') : auto,
@@ -511,6 +515,7 @@
       else {
         var v = el('span', 'value', row);
         if (r.value === '›') v.textContent = '›';
+        else if (r.opens) { v.appendChild(document.createTextNode(r.value)); el('span', 'chev', v, '›'); }
         else { el('span', 'chev', v, '‹'); v.appendChild(document.createTextNode(r.value)); el('span', 'chev', v, '›'); }
       }
       hover(row, Z.SETTINGS, i);
@@ -525,6 +530,57 @@
     renderSettings();
     setClass($('settings'), 'open', true);
     updateFocus();
+  }
+
+  // MARK: - Language: a list of every catalogue in its own name, as on Android (moving through it doesn't switch the app)
+
+  var langHint = null;
+
+  function languageChoices() {
+    return ['auto'].concat(I18N.languages());
+  }
+
+  /** The language in use: "auto", or the catalogue the setting resolved to ("pt-BR" in config.properties is "pt"). */
+  function pickedLanguage() {
+    return Prefs.language() === 'auto' ? 'auto' : I18N.lang;
+  }
+
+  function renderLanguages() {
+    var box = $('langpick').firstChild, choices = languageChoices(), current = choices.indexOf(pickedLanguage());
+    box.innerHTML = '';
+    el('div', 'title', box, tr('Language'));
+    var list = el('div', 'list', box), holder = el('div', 'rows', list);
+    list.style.height = Math.min(choices.length, 7) * 78 + 'px';
+    for (var i = 0; i < choices.length; i++) {
+      var row = el('div', 'row', holder, choices[i] === 'auto' ? tr('Automatic') : I18N.languageName(choices[i]));
+      if (i === current) sym('check', el('span', 'value', row));
+      hover(row, Z.LANG, i);
+    }
+    langHint = el('div', 'hint', box);
+    updateFocus();
+  }
+
+  function openLanguages() {
+    setClass($('settings'), 'open', false);
+    st.zone = Z.LANG;
+    st.lang = Math.max(0, languageChoices().indexOf(pickedLanguage()));
+    renderLanguages();
+    setClass($('langpick'), 'open', true);
+    updateFocus();
+  }
+
+  /** OK: the language under the focus; Back: none. Either way, back to Home Settings, on the Language row. */
+  function closeLanguages(pick) {
+    setClass($('langpick'), 'open', false);
+    langHint = null;
+    var code = languageChoices()[st.lang];
+    if (pick && code !== pickedLanguage()) {
+      Prefs.set('language', code);
+      I18N.set(Prefs.language());
+      renderAll();
+      Data.refresh();   // the picks' titles and genres come in the new language
+    }
+    openSettings();
   }
 
   // MARK: - Shelf editor: which apps, in what order
@@ -634,6 +690,9 @@
       case Z.EDIT:
         editShelf(0);
         return;
+      case Z.LANG:
+        closeLanguages(true);
+        return;
     }
   }
 
@@ -680,12 +739,15 @@
         if (dy) st.row = Math.max(0, Math.min(rowsNow.length - 1, st.row + dy));
         else if (dx && rowsNow[st.row]) {
           var r = rowsNow[st.row];
-          if (r.value !== '›') { r.step(dx); renderSettings(); }
+          if (r.value !== '›') { r.step(dx); if (st.zone === Z.SETTINGS) renderSettings(); }
         }
         break;
       case Z.EDIT:
         if (dy) st.edit = Math.max(0, Math.min(apps.length - 1, st.edit + dy));
         else if (dx) editShelf(dx);
+        break;
+      case Z.LANG:
+        if (dy) st.lang = Math.max(0, Math.min(languageChoices().length - 1, st.lang + dy));
         break;
     }
     updateFocus();
@@ -693,6 +755,7 @@
 
   function back() {
     if (st.zone === Z.EDIT) { setClass($('shelfedit'), 'open', false); openSettings(); st.row = rowsNow.length - 2; updateFocus(); return; }
+    if (st.zone === Z.LANG) { closeLanguages(false); return; }
     if (sheetOpen()) { closeSheets(); return; }
     if (st.zone === Z.DRAWER) { closeDrawer(); return; }
     if (st.zone !== Z.SHELF && shelf.length) { st.zone = Z.SHELF; updateFocus(); return; }
@@ -702,7 +765,7 @@
   /** The pointer focuses what it's over (the Magic Remote, or a mouse when previewing). */
   function hover(node, zone, index) {
     node.onmouseover = function () {
-      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT))) return;
+      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG))) return;
       if (zone === Z.DRAWER && st.zone !== Z.DRAWER) return;
       if (zone !== Z.DRAWER && st.zone === Z.DRAWER && zone !== Z.SHELF) return;
       if (zone === Z.SHELF && st.zone === Z.DRAWER) closeDrawer();
@@ -714,6 +777,7 @@
       else if (zone === Z.APPS) st.grid = index;
       else if (zone === Z.SETTINGS) st.row = index;
       else if (zone === Z.EDIT) st.edit = index;
+      else if (zone === Z.LANG) st.lang = index;
       updateFocus();
     };
     node.onclick = function () { node.onmouseover(); activate(); };
