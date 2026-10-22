@@ -1,0 +1,35 @@
+# Builds everything and checks the catalogues on every pull request and push to main: what the README's
+# manual steps do, so a PR shows whether it still builds before anyone tries it on a TV.
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Google TV app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The runner already has the Android SDK ($ANDROID_HOME) and several JDKs. build.sh creates a throwaway
+      # config.properties and signing key, so no secrets are needed.
+      - run: JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME_17_X64}" ./build.sh
+
+  web:
+    name: Translations, LG and Samsung
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Catalogues match the code
+        run: python3 tools/translate.py --check
+      - name: LG package
+        run: python3 webos/build.py --generic
+      - name: Samsung package
+        run: python3 tizen/build.py --generic
+      - name: web/ is ES5 (webOS 3 and Tizen 3 run a Chromium from 2015 to 2017)
+        run: for f in web/*.js; do npx --yes acorn@8.14.0 --ecma5 --silent "$f" || exit 1; done
