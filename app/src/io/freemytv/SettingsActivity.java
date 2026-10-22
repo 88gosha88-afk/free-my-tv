@@ -436,6 +436,7 @@ public class SettingsActivity extends Activity {
             String error = recs.optString("error");
             int count = recs.optInt("count");
             if (!hasKey) line = Ui.tr("No TMDB key: see the README (config.properties).");
+            else if (error.equals(Recs.NO_KNOWN_APPS)) line = Ui.tr("None of the TV's streaming apps can give picks.");
             else if (error.equals(Recs.NO_APPS)) line = Ui.trf("TMDB has none of the TV's apps for tmdb_region={region}.", "region", Recs.REGION);
             else if (!error.isEmpty()) line = Ui.trf("Error: {error}.", "error", error);
             else if (count > 0) line = Ui.trf("On · {n} titles from the TV's apps, 3 new ones every hour.", "n", count);

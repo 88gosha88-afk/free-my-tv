@@ -97,8 +97,9 @@ final class Recs {
     }
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
     static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
-    /** The error when TMDB lists none of the TV's streaming apps in REGION: the settings say so in words. */
+    /** The errors the settings say in words: TMDB lists none of the TV's apps in REGION, or the TV has none we know. */
     static final String NO_APPS = "none of the TV's streaming services are on TMDB";
+    static final String NO_KNOWN_APPS = "none of the TV's streaming apps can give picks";
 
     private static Recs instance;
 
@@ -385,6 +386,10 @@ final class Recs {
     // MARK: - TMDB
 
     private void fetchList(int p) throws Exception {
+        // None of the services we know is on the TV (or hide_services hides them all): no region would change that.
+        boolean any = false;
+        for (String[] s : SERVICES) any |= installed(s[2]);
+        if (!any) throw new IOException(NO_KNOWN_APPS);
         // The services the TV has, by their TMDB ids in your region.
         Map<Integer, String[]> services = new HashMap<>();
         JSONArray providers = get("/watch/providers/movie?language=" + lang() + "&watch_region=" + REGION).getJSONArray("results");
