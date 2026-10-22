@@ -11,29 +11,44 @@ import android.view.TextureView;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import java.io.FileInputStream;
+
 /**
  * What the screensaver shows, in the mode picked in Home Settings (Prefs.screensaver):
- *  - "aerial": Apple's aerial videos, streamed one after another (muted) under the clock, which DreamView draws on top;
+ *  - "aerial": Apple's aerial videos (muted) under the clock, which DreamView draws on top. The TV's player can't
+ *    stream these big files, so AerialStore downloads them first and they play from disk; until the first one is
+ *    there, and whenever there is none, it shows the clock over the aurora;
  *  - "photos": the recommendations' photos (DreamView alone);
  *  - "clock": the big clock over the aurora (DreamView alone).
- * If the video can't be played (no network, the server is unreachable), it falls back to the clock over the aurora:
- * the screen is never left black.
+ * If the video can't be played, or can't be downloaded, it stays with the clock over the aurora: the screen is never
+ * left black.
  */
 final class ScreensaverStage extends FrameLayout {
-    private static final long STALL_MS = 30_000, FADE_MS = 1200;
+    private static final long STALL_MS = 20_000, FADE_MS = 1200;
     private static final int MAX_ERRORS = 3;
 
     private final DreamView dream;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private AerialStore store;
     private TextureView texture;
     private Surface surface;
     private MediaPlayer player;
-    private Aerials.Playlist playlist;
-    private boolean running, aerial, ready;
+    private AerialStore.Cached playing;
+    private boolean running, aerial;
     private int errors;
     private final Runnable stalled = () -> {
         AppLog.w("aerial video stalled");
         fail();
+    };
+
+    private final AerialStore.Callback downloads = new AerialStore.Callback() {
+        @Override public void onReady() {
+            if (running && aerial && player == null) playNext();
+        }
+
+        @Override public void onFailed() {
+            if (running && aerial && player == null) giveUp();
+        }
     };
 
     ScreensaverStage(Context c) {
@@ -41,13 +56,11 @@ final class ScreensaverStage extends FrameLayout {
         setBackgroundColor(Color.BLACK);
         dream = new DreamView(c);
         String mode = Prefs.screensaver();
-        aerial = mode.equals("aerial");
+        aerial = mode.equals("aerial") && !Aerials.all(c).isEmpty();
+        // Photos, or the clock over the aurora; with the aerials it is the clock until a video is playing.
+        dream.setMode(mode.equals("photos") ? DreamView.PHOTOS : DreamView.CLOCK);
         if (aerial) {
-            playlist = new Aerials.Playlist(c);
-            if (playlist.isEmpty()) aerial = false;
-        }
-        dream.setMode(aerial ? DreamView.VIDEO : mode.equals("photos") ? DreamView.PHOTOS : DreamView.CLOCK);
-        if (aerial) {
+            store = AerialStore.get(c);
             texture = new TextureView(c);
             texture.setAlpha(0f);
             texture.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
@@ -77,41 +90,45 @@ final class ScreensaverStage extends FrameLayout {
         running = true;
         errors = 0;
         dream.start();
-        if (aerial && surface != null && player == null) playNext();
+        if (aerial) {
+            store.download(downloads);      // fills the cache in the background (does nothing if it is full)
+            if (surface != null && player == null) playNext();
+        }
     }
 
     void stop() {
         if (!running) return;
         running = false;
         handler.removeCallbacksAndMessages(null);
+        if (store != null) store.setCallback(null);   // a download in progress carries on, for next time
         releasePlayer();
         dream.stop();
     }
 
+    /** Plays a downloaded clip from disk; with none yet, waits (the clock over the aurora) for a download to finish. */
     private void playNext() {
         if (!running || !aerial || surface == null) return;
+        AerialStore.Cached next = store.pick(playing);
         releasePlayer();
-        Aerials.Clip clip = playlist.next();
-        if (clip == null) {
-            giveUp();
+        if (next == null) {
+            dream.setMode(DreamView.CLOCK);
             return;
         }
-        dream.setCaption(clip.place);
-        ready = false;
+        playing = next;
+        dream.setCaption(next.clip.place);
         try {
             MediaPlayer mp = new MediaPlayer();
             player = mp;
             mp.setSurface(surface);
             mp.setVolume(0f, 0f);
             mp.setOnPreparedListener(p -> {
-                if (p != player) return;
-                ready = true;
-                p.start();
+                if (p == player) p.start();
             });
             mp.setOnInfoListener((p, what, extra) -> {
                 if (p == player && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
                     handler.removeCallbacks(stalled);
                     errors = 0;
+                    dream.setMode(DreamView.VIDEO);
                     texture.animate().alpha(1f).setDuration(FADE_MS).start();
                 }
                 return false;
@@ -123,11 +140,13 @@ final class ScreensaverStage extends FrameLayout {
                 playNext();
             });
             mp.setOnErrorListener((p, what, extra) -> {
-                AppLog.w("aerial video error " + what + "/" + extra);
+                AppLog.w("aerial video error " + what + "/" + extra + " in " + next.file.getName());
                 if (p == player) fail();
                 return true;
             });
-            mp.setDataSource(clip.url);
+            try (FileInputStream in = new FileInputStream(next.file)) {
+                mp.setDataSource(in.getFD());
+            }
             mp.prepareAsync();
             handler.removeCallbacks(stalled);
             handler.postDelayed(stalled, STALL_MS);
@@ -137,10 +156,15 @@ final class ScreensaverStage extends FrameLayout {
         }
     }
 
-    /** One clip failed: try another after a pause; after a few in a row, stay with the clock over the aurora. */
+    /** One clip failed to play: try another after a pause; after a few in a row, stay with the clock over the aurora. */
     private void fail() {
         handler.removeCallbacks(stalled);
         releasePlayer();
+        if (texture != null) {
+            texture.animate().cancel();
+            texture.setAlpha(0f);
+        }
+        dream.setMode(DreamView.CLOCK);
         if (!running) return;
         if (++errors >= MAX_ERRORS) {
             giveUp();
@@ -150,7 +174,12 @@ final class ScreensaverStage extends FrameLayout {
     }
 
     private void giveUp() {
+        AppLog.w("aerials: giving up for now, showing the clock");
         aerial = false;
+        if (store != null) {
+            store.cancel();
+            store.setCallback(null);
+        }
         if (texture != null) texture.animate().alpha(0f).setDuration(FADE_MS).start();
         dream.setMode(DreamView.CLOCK);
     }

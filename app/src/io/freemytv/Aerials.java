@@ -13,7 +13,8 @@ import java.util.List;
 
 /**
  * Apple TV's aerial videos for the screensaver. Only the list is bundled (assets/aerials.txt, one "place TAB url" per
- * line, the 1080p H.264 version of each clip); the videos are streamed from Apple's servers when the screensaver runs.
+ * line, the 1080p H.264 version of each clip); the videos are downloaded from Apple's servers into the app's cache
+ * (AerialStore) and played from there.
  */
 final class Aerials {
     private Aerials() {}
@@ -25,11 +26,16 @@ final class Aerials {
             this.place = place;
             this.url = url;
         }
+
+        /** The file's name at the end of the url: unique for each clip. */
+        String file() {
+            return url.substring(url.lastIndexOf('/') + 1);
+        }
     }
 
     private static List<Clip> all;
 
-    private static synchronized List<Clip> all(Context c) {
+    static synchronized List<Clip> all(Context c) {
         if (all != null) return all;
         List<Clip> list = new ArrayList<>();
         try (InputStream in = c.getAssets().open("aerials.txt");
@@ -47,26 +53,10 @@ final class Aerials {
         return all;
     }
 
-    /** Every clip once in random order, then again in another order: no repeats until all have played. */
-    static final class Playlist {
-        private final List<Clip> clips;
-        private final List<Clip> queue = new ArrayList<>();
-
-        Playlist(Context c) {
-            clips = all(c);
-        }
-
-        boolean isEmpty() {
-            return clips.isEmpty();
-        }
-
-        Clip next() {
-            if (clips.isEmpty()) return null;
-            if (queue.isEmpty()) {
-                queue.addAll(clips);
-                Collections.shuffle(queue);
-            }
-            return queue.remove(queue.size() - 1);
-        }
+    /** All the clips in a new random order. */
+    static List<Clip> shuffled(Context c) {
+        List<Clip> list = new ArrayList<>(all(c));
+        Collections.shuffle(list);
+        return list;
     }
 }
