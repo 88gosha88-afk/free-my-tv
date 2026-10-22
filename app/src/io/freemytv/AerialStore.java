@@ -11,8 +11,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * The aerial videos on the TV's disk (the app's cache folder). The TV's player can't stream these big files over HTTP
@@ -55,6 +64,7 @@ final class AerialStore {
     private volatile Callback callback;
     private volatile boolean cancelled;
     private Thread worker;
+    private SSLSocketFactory appleSockets;
 
     private AerialStore(Context c) {
         app = c;
@@ -133,6 +143,29 @@ final class AerialStore {
         }
     }
 
+    /**
+     * Apple's servers use Apple's own certificate authority ("Apple Server Authentication CA"), which Android doesn't
+     * know: the TV rejects them with "Trust anchor for certification path not found". For these downloads only, trust
+     * exactly that authority (assets/apple_server_ca.pem), which is more careful than trusting everything.
+     */
+    private SSLSocketFactory appleSockets() throws IOException, GeneralSecurityException {
+        if (appleSockets != null) return appleSockets;
+        KeyStore anchors = KeyStore.getInstance(KeyStore.getDefaultType());
+        anchors.load(null, null);
+        try (InputStream in = app.getAssets().open("apple_server_ca.pem")) {
+            int i = 0;
+            for (Certificate cert : CertificateFactory.getInstance("X.509").generateCertificates(in)) {
+                anchors.setCertificateEntry("apple" + i++, cert);
+            }
+        }
+        TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        factory.init(anchors);
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, factory.getTrustManagers(), null);
+        appleSockets = context.getSocketFactory();
+        return appleSockets;
+    }
+
     private void post(boolean ready) {
         main.post(() -> {
             Callback cb = callback;
@@ -149,6 +182,7 @@ final class AerialStore {
         try {
             long have = part.isFile() ? part.length() : 0;
             c = (HttpURLConnection) new URL(clip.url).openConnection();
+            if (c instanceof HttpsURLConnection) ((HttpsURLConnection) c).setSSLSocketFactory(appleSockets());
             c.setConnectTimeout(15_000);
             c.setReadTimeout(20_000);
             if (have > 0) c.setRequestProperty("Range", "bytes=" + have + "-");
@@ -173,7 +207,7 @@ final class AerialStore {
                 return false;
             }
             return part.renameTo(target);
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | GeneralSecurityException | RuntimeException e) {
             AppLog.w("aerials: download failed (" + clip.file() + "): " + e.getMessage());
             return false;
         } finally {
