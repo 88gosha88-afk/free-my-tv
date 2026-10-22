@@ -5,7 +5,6 @@ import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.graphics.Shader;
 
 /**
@@ -67,13 +66,17 @@ final class Backdrop {
     }
 
     static Backdrop make(Bitmap src, boolean forLight) {
-        Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        // Cropped to 16:9 at the source's resolution first, then filtered down (no step over 2×).
+        Bitmap crop = center(src, (float) W / H);
+        if (crop != src) src.recycle();
+        Bitmap out = Ui.downscale(crop, W, H);
+        if (out != crop) crop.recycle();
+        if (!out.isMutable()) {
+            Bitmap copy = out.copy(Bitmap.Config.ARGB_8888, true);
+            out.recycle();
+            out = copy;
+        }
         Canvas c = new Canvas(out);
-        Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
-        float scale = Math.max((float) W / src.getWidth(), (float) H / src.getHeight());
-        float sw = src.getWidth() * scale, sh = src.getHeight() * scale;
-        c.drawBitmap(src, null, new RectF((W - sw) / 2, (H - sh) / 2, (W + sw) / 2, (H + sh) / 2), photo);
-        src.recycle();
         if (forLight) {
             // Light design: everything comes from the photo without scrims.
             Bitmap wide = card(out, WIDE_W, WIDE_H), tall = card(out, TALL_W, TALL_H);
@@ -158,20 +161,19 @@ final class Backdrop {
         return new Bitmap[] {out, frost};
     }
 
-    /** The center of the photo at the card's aspect ratio, filtered down (halving while possible) to the exact size. */
+    /** The center of the photo at the card's aspect ratio, filtered down to the exact size. */
     private static Bitmap card(Bitmap full, int w, int h) {
-        float ratio = (float) w / h;
-        int cw = Math.min(full.getWidth(), Math.round(full.getHeight() * ratio));
-        int ch = Math.min(full.getHeight(), Math.round(cw / ratio));
-        Bitmap b = Bitmap.createBitmap(full, (full.getWidth() - cw) / 2, (full.getHeight() - ch) / 2, cw, ch);
-        while (b.getWidth() / 2 >= w) {
-            Bitmap half = Bitmap.createScaledBitmap(b, b.getWidth() / 2, b.getHeight() / 2, true);
-            if (b != full) b.recycle();
-            b = half;
-        }
-        Bitmap out = Bitmap.createScaledBitmap(b, w, h, true);
+        Bitmap b = center(full, (float) w / h);
+        Bitmap out = Ui.downscale(b, w, h);
         if (b != full && b != out) b.recycle();
-        return gpu(out);
+        return out == full ? gpu(full.copy(Bitmap.Config.ARGB_8888, false)) : gpu(out);
+    }
+
+    /** The center of the image at that aspect ratio (the image itself when it already has it). */
+    private static Bitmap center(Bitmap b, float ratio) {
+        int cw = Math.min(b.getWidth(), Math.round(b.getHeight() * ratio));
+        int ch = Math.min(b.getHeight(), Math.round(cw / ratio));
+        return Bitmap.createBitmap(b, (b.getWidth() - cw) / 2, (b.getHeight() - ch) / 2, cw, ch);
     }
 
     /** Copies it to GPU memory (cheap to draw; the process doesn't keep the pixels). */

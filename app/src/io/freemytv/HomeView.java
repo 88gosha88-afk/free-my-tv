@@ -1397,23 +1397,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float scale = (float) Math.sqrt(bw * bh * 0.085f / (lw * lh * Math.max(0.08f, it.logoInk))) * it.logoScale;
         scale = Math.min(scale, Math.min(bw * 0.76f / lw, bh * 0.58f / lh));
         if (rest) scale /= 1 + FOCUS_GROW;
-        Bitmap out = downscale(src, Math.round(lw * scale), Math.round(lh * scale));
+        Bitmap out = Ui.downscale(src, Math.round(lw * scale), Math.round(lh * scale));
         crispLogos.put(key, out);
-        return out;
-    }
-
-    /** Halves the size while it can (a 2×2 average, no aliasing), then finishes at the exact size. */
-    private static Bitmap downscale(Bitmap src, int w, int h) {
-        w = Math.max(1, w);
-        h = Math.max(1, h);
-        Bitmap b = src;
-        while (b.getWidth() / 2 >= w && b.getHeight() / 2 >= h) {
-            Bitmap half = Bitmap.createScaledBitmap(b, b.getWidth() / 2, b.getHeight() / 2, true);
-            if (b != src) b.recycle();
-            b = half;
-        }
-        Bitmap out = Bitmap.createScaledBitmap(b, w, h, true);
-        if (b != src && b != out) b.recycle();
         return out;
     }
 
