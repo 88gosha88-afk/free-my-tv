@@ -71,6 +71,13 @@ public class SettingsActivity extends Activity {
         setIntent(intent);
     }
 
+    @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code == PHOTOS_PERMISSION) view.photosAllowed(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
+    }
+
+    private static final int PHOTOS_PERMISSION = 1;
+
     @Override protected void onPause() {
         closePreview();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
@@ -261,6 +268,9 @@ public class SettingsActivity extends Activity {
             } else if (screen == HOME_CHOICE) {
                 top = LIST_TOP + 20 + row * (CHOICE_H + ROW_GAP);
                 height = CHOICE_H;
+            } else if (screen == HOME_SETTINGS) {
+                top = LIST_TOP + 20 + row * settingsPitch();
+                height = settingsPitch() - LIST_ROW_GAP;
             } else {
                 top = LIST_TOP + 20 + row * (LIST_ROW_H + LIST_ROW_GAP);
                 height = LIST_ROW_H;
@@ -637,8 +647,13 @@ public class SettingsActivity extends Activity {
         // MARK: - Home Settings and Remote Buttons
 
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
-        /** Home Settings: language, temperature, theme, sounds, weather, city, quotes, then one row per coin. */
-        private static final int CITY_ROW = 5, COIN_ROWS = 7;
+        /** Home Settings: language, temperature, theme, my photos, sounds, weather, city, quotes, then one row per coin. */
+        private static final int PHOTOS_ROW = 3, CITY_ROW = 6, COIN_ROWS = 8;
+
+        /** Row spacing in Home Settings: tighter when the list is long, so it still fits above the hint. */
+        private float settingsPitch() {
+            return Math.min(LIST_ROW_H + LIST_ROW_GAP, 790f / settingLabels().length);
+        }
 
         private boolean dollar() {
             return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
@@ -649,6 +664,7 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Language"));
             l.add(Ui.tr("Temperature"));
             l.add(Ui.tr("Theme"));
+            l.add(Ui.tr("My Photos"));
             l.add(Ui.tr("Navigation sounds"));
             l.add(Ui.tr("Weather widget"));
             l.add(Ui.tr("City"));
@@ -669,10 +685,13 @@ public class SettingsActivity extends Activity {
             v[1] = unit.equals("C") ? "°C" : unit.equals("F") ? "°F" : Ui.tr("unit|Automatic");
             String theme = Prefs.theme();
             v[2] = theme.equals("light") ? Ui.tr("Light") : theme.equals("dark") ? Ui.tr("Dark") : Ui.tr("Automatic");
-            v[3] = onOff(Prefs.sounds());
-            v[4] = onOff(Prefs.weather());
+            int photos = Photos.files(getContext()).size();
+            v[PHOTOS_ROW] = !photoStatus.isEmpty() ? photoStatus : photos == 0 ? Ui.tr("None")
+                    : Prefs.photos() ? Ui.plural("plural|one:{n} photo|other:{n} photos", photos) : Ui.tr("Off");
+            v[4] = onOff(Prefs.sounds());
+            v[5] = onOff(Prefs.weather());
             v[CITY_ROW] = !cityStatus.isEmpty() ? cityStatus : Prefs.city().isEmpty() ? "—" : Prefs.city();
-            v[6] = onOff(Prefs.quotes());
+            v[7] = onOff(Prefs.quotes());
             // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
             for (int i = COIN_ROWS; i < v.length; i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
             return v;
@@ -750,10 +769,14 @@ public class SettingsActivity extends Activity {
                     Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]);
                     break;
                 }
-                case 3: Prefs.setSounds(!Prefs.sounds()); break;
-                case 4: Prefs.setWeather(!Prefs.weather()); break;
+                case PHOTOS_ROW:
+                    if (Photos.files(getContext()).isEmpty() || importing) return;
+                    Prefs.setPhotos(!Prefs.photos());
+                    return;
+                case 4: Prefs.setSounds(!Prefs.sounds()); break;
+                case 5: Prefs.setWeather(!Prefs.weather()); break;
                 case CITY_ROW: return;
-                case 6: Prefs.setQuotes(!Prefs.quotes()); break;
+                case 7: Prefs.setQuotes(!Prefs.quotes()); break;
                 default:
                     if (!Prefs.quotes()) return;
                     Prefs.setCoin(focus - COIN_ROWS, !Prefs.coin(focus - COIN_ROWS));
@@ -780,6 +803,64 @@ public class SettingsActivity extends Activity {
                 return true;
             });
             dialog.show();
+        }
+
+        // MARK: - My Photos (from a USB stick)
+
+        private String photoStatus = "";
+        private boolean importing;
+
+        /** OK on My Photos: asks once to read the stick, then copies its photos in the background. */
+        private void importPhotos() {
+            if (importing) return;
+            Context c = getContext();
+            if (!Photos.allowed(c)) {
+                activity.requestPermissions(new String[] {Photos.PERMISSION}, PHOTOS_PERMISSION);
+                return;
+            }
+            if (Photos.sticks(c).isEmpty()) {
+                showPhotoStatus(Ui.tr("No USB stick found."));
+                return;
+            }
+            importing = true;
+            photoStatus = Ui.tr("Looking for photos…");
+            new Thread(() -> {
+                String message;
+                try {
+                    int n = Photos.importAll(c, (done, total) -> handler.post(() -> {
+                        photoStatus = Ui.trf("Importing… {done} of {total}", "done", done, "total", total);
+                        invalidate();
+                    }));
+                    message = n == 0 ? Ui.tr("No photos on the USB stick.")
+                            : Ui.plural("plural|one:{n} photo imported|other:{n} photos imported", n);
+                } catch (Exception e) {
+                    AppLog.w("photos: import failed: " + e.getMessage());
+                    message = Ui.trf("Couldn't import: {error}", "error", e.getMessage());
+                }
+                String result = message;
+                handler.post(() -> {
+                    importing = false;
+                    showPhotoStatus(result);
+                    spoken.focusMoved();
+                });
+            }).start();
+        }
+
+        /** The answer to "read your photos?": on yes, the import starts. */
+        void photosAllowed(boolean yes) {
+            if (yes) importPhotos();
+            else showPhotoStatus(Ui.tr("Free My TV needs permission to read the photos."));
+            invalidate();
+        }
+
+        private void showPhotoStatus(String message) {
+            photoStatus = message;
+            invalidate();
+            handler.postDelayed(() -> {
+                if (importing || !photoStatus.equals(message)) return;
+                photoStatus = "";
+                invalidate();
+            }, 4000);
         }
 
         private void searchCity(String name) {
@@ -962,9 +1043,10 @@ public class SettingsActivity extends Activity {
             Paint heading = Ui.text(Ui.displaySemibold, 34 * k, 0xFFFFFFFF);
             c.drawText(keys ? Ui.tr("Remote Buttons") : Ui.tr("Home Settings"),
                     LIST_X * k + 30 * k, (LIST_TOP - 24) * k, heading);
+            float pitch = keys ? LIST_ROW_H + LIST_ROW_GAP : settingsPitch();
             for (int i = 0; i < labels.length; i++) {
-                float y = (LIST_TOP + 20 + i * (LIST_ROW_H + LIST_ROW_GAP)) * k;
-                rowRect.set(LIST_X * k, y, LIST_R * k, y + LIST_ROW_H * k);
+                float y = (LIST_TOP + 20 + i * pitch) * k;
+                rowRect.set(LIST_X * k, y, LIST_R * k, y + (pitch - LIST_ROW_GAP) * k);
                 float f = drawRowBackground(c, i);
                 rowLabel.setColor(blend(0xF2FFFFFF, INK, f));
                 boolean locked = !keys && i >= COIN_ROWS && !Prefs.quotes();
@@ -975,8 +1057,9 @@ public class SettingsActivity extends Activity {
                 c.drawText(values[i], rowRect.right - 30 * k, base, rowValue);
             }
             Paint hint = Ui.text(Ui.regular, 23 * k, 0x8CFFFFFF);
-            float hy = (LIST_TOP + 20 + labels.length * (LIST_ROW_H + LIST_ROW_GAP) + 36) * k;
-            c.drawText(Ui.tr("OK or the arrows change the value."), LIST_X * k + 30 * k, hy, hint);
+            float hy = (LIST_TOP + 20 + labels.length * pitch + 36) * k;
+            c.drawText(!keys && focus == PHOTOS_ROW ? Ui.tr("OK imports from the USB stick; the arrows turn them on or off.")
+                    : Ui.tr("OK or the arrows change the value."), LIST_X * k + 30 * k, hy, hint);
             if (keys) {
                 c.drawText(RemoteKeys.VESTEL ? Ui.tr("YouTube, Prime Video and Google Play: the TV itself controls those buttons.")
                         : RemoteKeys.KTC ? Ui.tr("Netflix, YouTube and Prime Video: the TV itself controls those buttons.")
@@ -1023,6 +1106,10 @@ public class SettingsActivity extends Activity {
                 openPicker(PICK_LANGUAGE);
             } else if (screen == HOME_SETTINGS && focus == CITY_ROW) {
                 askCity();
+                return;
+            } else if (screen == HOME_SETTINGS && focus == PHOTOS_ROW) {
+                importPhotos();
+                invalidate();
                 return;
             } else if (screen == HOME_SETTINGS) {
                 adjust(1);

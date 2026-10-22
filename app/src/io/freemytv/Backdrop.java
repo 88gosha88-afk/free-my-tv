@@ -49,6 +49,12 @@ final class Backdrop {
 
     private Backdrop(Bitmap image, int[] frost, int[] glass, Bitmap wide, Bitmap tall, int[] light, int[] lightGlass,
                      int[] night, int[] nightGlass) {
+        this(image, frost, glass, wide, tall, light, lightGlass, night, nightGlass, light, night, FW, FH);
+    }
+
+    /** `lightBg` and `nightBg` (bw × bh): the background itself, when it isn't the frosted version. */
+    private Backdrop(Bitmap image, int[] frost, int[] glass, Bitmap wide, Bitmap tall, int[] light, int[] lightGlass,
+                     int[] night, int[] nightGlass, int[] lightBg, int[] nightBg, int bw, int bh) {
         this.image = image;
         this.frost = frost;
         this.glass = glass;
@@ -58,11 +64,19 @@ final class Backdrop {
         this.lightGlass = lightGlass;
         this.nightFrost = night;
         this.nightGlass = nightGlass;
-        lightImage = light == null ? null : Bitmap.createBitmap(light, FW, FH, Bitmap.Config.ARGB_8888);
-        nightImage = night == null ? null : Bitmap.createBitmap(night, FW, FH, Bitmap.Config.ARGB_8888);
+        lightImage = lightBg == null ? null : Bitmap.createBitmap(lightBg, bw, bh, Bitmap.Config.ARGB_8888);
+        nightImage = nightBg == null ? null : Bitmap.createBitmap(nightBg, bw, bh, Bitmap.Config.ARGB_8888);
     }
 
     static Backdrop make(Bitmap src, boolean forLight) {
+        return make(src, forLight, false);
+    }
+
+    /**
+     * `own`: one of your photos (Photos). Its background is less blurred, less whitened by day and less darkened at
+     * night than a pick's, so it still reads as your photo; the glass and the drawer stay as they are.
+     */
+    static Backdrop make(Bitmap src, boolean forLight, boolean own) {
         Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -79,6 +93,12 @@ final class Backdrop {
             int[] lightGlass = whiten(glass.clone(), 0.74f);
             int[] night = darken(frost.clone(), 0.76f);
             int[] nightGlass = darken(glass, 0.56f);
+            if (own) {
+                int[] sharp = reduce(out, GW, GH, 1, 1);
+                int[] lightBg = whiten(sharp.clone(), 0.45f), nightBg = darken(sharp, 0.5f);
+                out.recycle();
+                return new Backdrop(null, frost, null, wide, tall, light, lightGlass, night, nightGlass, lightBg, nightBg, GW, GH);
+            }
             out.recycle();
             return new Backdrop(null, frost, null, wide, tall, light, lightGlass, night, nightGlass);
         }
