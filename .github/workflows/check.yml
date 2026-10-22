@@ -1,5 +1,5 @@
-# Builds everything and checks the catalogues on every pull request and push to main: what the README's
-# manual steps do, so a PR shows whether it still builds before anyone tries it on a TV.
+# Builds everything and checks the catalogues on every pull request and push to main, with tools/check.sh: the same
+# script contributors run before pushing, so a PR shows whether it still builds before anyone tries it on a TV.
 name: Check
 
 on:
@@ -10,26 +10,34 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels the run for the push before it.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android:
     name: Google TV app
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # The runner already has the Android SDK ($ANDROID_HOME) and several JDKs. build.sh creates a throwaway
-      # config.properties and signing key, so no secrets are needed.
-      - run: JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME_17_X64}" ./build.sh
+      # The JDK and SDK the README asks for, not whatever the runner image has (build.sh takes the newest it finds,
+      # so a newer android.jar would let through a call that breaks everyone's build).
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Android SDK (build-tools 34, android-34)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$RUNNER_TEMP/sdk" \
+            "build-tools;34.0.0" "platforms;android-34" > /dev/null
+          echo "ANDROID_HOME=$RUNNER_TEMP/sdk" >> "$GITHUB_ENV"
+      # build.sh makes a throwaway config.properties and signing key: no secrets needed.
+      - run: tools/check.sh android
 
   web:
     name: Translations, LG and Samsung
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Catalogues match the code
-        run: python3 tools/translate.py --check
-      - name: LG package
-        run: python3 webos/build.py --generic
-      - name: Samsung package
-        run: python3 tizen/build.py --generic
-      - name: web/ is ES5 (webOS 3 and Tizen 3 run a Chromium from 2015 to 2017)
-        run: for f in web/*.js; do npx --yes acorn@8.14.0 --ecma5 --silent "$f" || exit 1; done
+      - run: tools/check.sh web
