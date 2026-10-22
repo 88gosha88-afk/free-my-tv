@@ -469,7 +469,7 @@
     var unit = Prefs.temperature(), theme = Prefs.theme();
     var auto = tr('Automatic'), picked = pickedLanguage();
     var rows = [
-      {label: tr('Language'), value: picked === 'auto' ? auto : I18N.languageName(picked), opens: true,
+      {label: tr('Language'), value: picked === 'auto' ? auto : I18N.languageName(picked), opens: true, language: true,
         step: function (d) { if (d >= 0) openLanguages(); }},
       {label: tr('Temperature'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : tr('unit|Automatic'),
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
@@ -581,6 +581,8 @@
       Data.refresh();   // the picks' titles and genres come in the new language
     }
     openSettings();
+    for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].language) st.row = i;
+    updateFocus();
   }
 
   // MARK: - Shelf editor: which apps, in what order

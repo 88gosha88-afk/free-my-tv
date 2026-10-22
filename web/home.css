@@ -420,12 +420,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   color: #FFF;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none; /* while it fades out, the pointer goes to what's under it, not to its rows */
   -webkit-transform: scale(1.04);
   transform: scale(1.04);
   -webkit-transition: opacity 0.35s, -webkit-transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s 0.45s;
   transition: opacity 0.35s, transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s 0.45s;
 }
-.sheet.open { opacity: 1; visibility: visible; -webkit-transform: none; transform: none; -webkit-transition-delay: 0s; transition-delay: 0s; }
+.sheet.open { opacity: 1; visibility: visible; pointer-events: auto; -webkit-transform: none; transform: none; -webkit-transition-delay: 0s; transition-delay: 0s; }
 .sheet h2 { position: absolute; left: 0; right: 0; top: 84px; margin: 0; text-align: center; font-size: 40px; font-weight: 600; }
 
 #apps .grid { position: absolute; left: 0; top: 0; width: 1920px; -webkit-transition: -webkit-transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1); }
