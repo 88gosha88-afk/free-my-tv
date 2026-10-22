@@ -227,6 +227,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean running, tilesDirty, statusDirty, heroDirty, drawerDirty, gridDirty, motionDirty = true;
     private boolean drawerWasMoving, idle;
     private long lastNanos, resumedAt, lastStep;
+    private static final long BURST_MS = 1500;
     private int w, h;
     private float k = 1;
     private String clockText = "", dateText = "", weatherLine = "";
@@ -406,7 +407,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (running) return;
         running = true;
         checkNight(false);
-        resumedAt = SystemClock.uptimeMillis();
+        long now = SystemClock.uptimeMillis();
+        // Some remotes (Xiaomi's) send one Home press as a burst of 5 to 8, and each one pauses and resumes the home
+        // screen: those after the first change nothing, so the lists are read only once.
+        boolean again = resumedAt != 0 && now - resumedAt < BURST_MS;
+        resumedAt = now;
         lastNanos = 0;
         lastStep = 0;
         data.addListener(this);
@@ -416,7 +421,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (tvInputs != null) tvInputs.registerCallback(inputCallback, handler);
         handler.postDelayed(tick, 15_000);
         checkNotices();
-        reload();
+        if (!again) reload();
         updatePalette();
         updatePicks();
         if (sheetOpen) closeSheet();
