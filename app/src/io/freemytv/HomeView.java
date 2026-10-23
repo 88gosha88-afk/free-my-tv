@@ -2686,8 +2686,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawLightImage(Canvas c, Backdrop b, float alpha) {
-        if (night < 0.999f || b.nightImage == null) drawImage(c, b.lightImage, alpha);
-        if (night > 0.001f) drawImage(c, b.nightImage, alpha * night);
+        // An aerial still has its own, sharper background; the picks' photos use the heavily blurred one.
+        Bitmap dayImage = b.sharpLight != null ? b.sharpLight : b.lightImage;
+        Bitmap nightImage = b.sharpNight != null ? b.sharpNight : b.nightImage;
+        if (night < 0.999f || nightImage == null) drawImage(c, dayImage, alpha);
+        if (night > 0.001f) drawImage(c, nightImage, alpha * night);
     }
 
     private void drawLightTop(Canvas c) {

@@ -113,7 +113,7 @@ public class SettingsActivity extends Activity {
     }
 
     static final class SettingsView extends View implements Choreographer.FrameCallback {
-        private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5;
+        private static final int MAIN = 0, HOME_CHOICE = 1, HOME_SETTINGS = 2, REMOTE_KEYS = 3, PICKER = 4, SHELF_EDIT = 5, SAVER_SETTINGS = 6;
         private static final float LIST_ROW_H = 68, LIST_ROW_GAP = 6;
         private static final int PICK_VISIBLE = 9;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_H = 74, ROW_GAP = 8, CHOICE_H = 104;
@@ -209,7 +209,7 @@ public class SettingsActivity extends Activity {
                                 : freeActive() ? "Free My TV" : Ui.tr("Original", "Original");
                         return Ui.tr("Início, ", "Home Screen, ") + value;
                     }
-                    String[] names = {Ui.tr("Tela de Descanso, ver agora", "Screensaver, preview"), Ui.tr("Ajustes do Início", "Home Settings"),
+                    String[] names = {Ui.tr("Descanso e fundo", "Screensaver & background"), Ui.tr("Ajustes do Início", "Home Settings"),
                             Ui.tr("Prateleira", "Shelf"), Ui.tr("Botões do Controle", "Remote Buttons"), Ui.tr("Ajustes da TV", "TV Settings")};
                     return row - 1 < names.length ? names[row - 1] : "";
                 }
@@ -220,6 +220,7 @@ public class SettingsActivity extends Activity {
                     return name + (inUse ? Ui.tr(". Em uso", ". In use") : "") + ", " + (row + 1) + Ui.tr(" de 2", " of 2");
                 }
                 case HOME_SETTINGS:
+                case SAVER_SETTINGS:
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
                     String[] labels = keys ? keyLabels() : settingLabels(), values = keys ? keyValues() : settingValues();
@@ -334,7 +335,8 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case MAIN: return 6;
                 case HOME_CHOICE: return 2;
-                case HOME_SETTINGS: return settingLabels().length;
+                case HOME_SETTINGS:
+                case SAVER_SETTINGS: return settingLabels().length;
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
                 case SHELF_EDIT: return Math.min(PICK_VISIBLE, shelfRows.size());
                 default: return Prefs.KEYS.length;
@@ -372,10 +374,10 @@ public class SettingsActivity extends Activity {
             boolean working = busy();
             String busyText = busyText();
             String mode = freeActive() ? "Free My TV" : Ui.tr("Original", "Original");
-            String[] labels = {Ui.tr("Início", "Home Screen"), Ui.tr("Tela de Descanso", "Screensaver"),
+            String[] labels = {Ui.tr("Início", "Home Screen"), Ui.tr("Descanso e fundo", "Screensaver & background"),
                     Ui.tr("Ajustes do Início", "Home Settings"), Ui.tr("Prateleira", "Shelf"),
                     Ui.tr("Botões do Controle", "Remote Buttons"), Ui.tr("Ajustes da TV", "TV Settings")};
-            String[] values = {working ? "" : mode, Ui.tr("Ver agora", "Preview"), "", "", "", ""};
+            String[] values = {working ? "" : mode, Ui.tr("Ajustar", "Customize"), "", "", "", ""};
             for (int i = 0; i < 6; i++) {
                 float y = (LIST_TOP + i * (ROW_H + ROW_GAP)) * k;
                 rowRect.set(LIST_X * k, y, LIST_R * k, y + ROW_H * k);
@@ -583,6 +585,9 @@ public class SettingsActivity extends Activity {
                     } else if (down && screen == HOME_SETTINGS) {
                         adjust(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
+                    } else if (down && screen == SAVER_SETTINGS) {
+                        adjustSaver(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        invalidate();
                     }
                     return true;
                 case KeyEvent.KEYCODE_DPAD_CENTER:
@@ -608,7 +613,7 @@ public class SettingsActivity extends Activity {
                                 focus = pickFor - 1;
                                 screen = REMOTE_KEYS;
                             } else {
-                                focus = screen == HOME_SETTINGS ? 2 : screen == SHELF_EDIT ? 3 : screen == REMOTE_KEYS ? 4 : 0;
+                                focus = screen == SAVER_SETTINGS ? 1 : screen == HOME_SETTINGS ? 2 : screen == SHELF_EDIT ? 3 : screen == REMOTE_KEYS ? 4 : 0;
                                 screen = MAIN;
                             }
                         }
@@ -625,14 +630,16 @@ public class SettingsActivity extends Activity {
         // MARK: - Home Settings and Remote Buttons
 
         private static final String[] LANGUAGES = {"auto", "pt", "en", "es", "de", "ru"}, UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"}, SAVERS = {"aerial", "photos", "clock"}, BACKGROUNDS = {"auto", "apple", "plain"};
+        private static final int[] DELAYS = {0, 1, 2, 5, 10, 15, 30};
         /** Home Settings: language, temperature, theme, weather, quotes, then one row per coin. */
-        private static final int CITY_ROW = 4, SAVER_ROW = 6, BACKGROUND_ROW = 7, COIN_ROWS = 8;
+        private static final int CITY_ROW = 4, COIN_ROWS = 6;
 
         private boolean dollar() {
             return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
         }
 
         private String[] settingLabels() {
+            if (screen == SAVER_SETTINGS) return saverLabels();
             List<String> l = new ArrayList<>();
             l.add(Ui.tr("Idioma", "Language"));
             l.add(Ui.tr("Temperatura", "Temperature"));
@@ -640,8 +647,6 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Widget do clima", "Weather widget"));
             l.add(Ui.tr("Cidade", "City"));
             l.add(Ui.tr("Widget de cotações", "Quotes widget"));
-            l.add(Ui.tr("Tela de descanso", "Screensaver"));
-            l.add(Ui.tr("Fundo", "Background"));
             l.add("Bitcoin");
             l.add("Ethereum");
             l.add("Solana");
@@ -650,6 +655,7 @@ public class SettingsActivity extends Activity {
         }
 
         private String[] settingValues() {
+            if (screen == SAVER_SETTINGS) return saverValues();
             String[] labels = settingLabels();
             String[] v = new String[labels.length];
             String lang = Prefs.language();
@@ -662,12 +668,6 @@ public class SettingsActivity extends Activity {
             v[3] = onOff(Prefs.weather());
             v[CITY_ROW] = !cityStatus.isEmpty() ? cityStatus : Prefs.city().isEmpty() ? "—" : Prefs.city();
             v[5] = onOff(Prefs.quotes());
-            String saver = Prefs.screensaver();
-            v[SAVER_ROW] = saver.equals("photos") ? Ui.tr("Fotos das sugestões", "Picks' photos")
-                    : saver.equals("clock") ? Ui.tr("Só o relógio", "Clock only") : Ui.tr("Vídeos da Apple", "Apple aerials");
-            String background = Prefs.background();
-            v[BACKGROUND_ROW] = background.equals("apple") ? Ui.tr("Fotos da Apple", "Apple photos")
-                    : background.equals("plain") ? Ui.tr("Gradiente", "Gradient") : Ui.tr("Automático", "Automatic");
             // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
             for (int i = COIN_ROWS; i < v.length; i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
             return v;
@@ -742,22 +742,87 @@ public class SettingsActivity extends Activity {
                 case 3: Prefs.setWeather(!Prefs.weather()); break;
                 case CITY_ROW: return;
                 case 5: Prefs.setQuotes(!Prefs.quotes()); break;
-                case SAVER_ROW: {
-                    int at = java.util.Arrays.asList(SAVERS).indexOf(Prefs.screensaver());
-                    Prefs.setScreensaver(SAVERS[(at + dir + SAVERS.length) % SAVERS.length]);
-                    return;
-                }
-                case BACKGROUND_ROW: {
-                    int at = java.util.Arrays.asList(BACKGROUNDS).indexOf(Prefs.background());
-                    Prefs.setBackground(BACKGROUNDS[(at + dir + BACKGROUNDS.length) % BACKGROUNDS.length]);
-                    return;
-                }
                 default:
                     if (!Prefs.quotes()) return;
                     Prefs.setCoin(focus - COIN_ROWS, !Prefs.coin(focus - COIN_ROWS));
                     break;
             }
             HomeData.get(getContext()).settingsChanged();
+        }
+
+        // MARK: - Screensaver and background
+
+        private String[] saverLabels() {
+            return new String[] {Ui.tr("Ver a tela de descanso", "Preview the screensaver"),
+                    Ui.tr("Tela de descanso", "Screensaver"), Ui.tr("Lugar da tela de descanso", "Screensaver place"),
+                    Ui.tr("Começa depois de", "Starts after"), Ui.tr("Fundo", "Background"),
+                    Ui.tr("Lugar do fundo", "Background place")};
+        }
+
+        private String[] saverValues() {
+            String saver = Prefs.screensaver(), background = Prefs.background();
+            int delay = Prefs.saverDelay();
+            return new String[] {"",
+                    saver.equals("photos") ? Ui.tr("Fotos das sugestões", "Picks' photos")
+                            : saver.equals("clock") ? Ui.tr("Só o relógio", "Clock only") : Ui.tr("Vídeos da Apple", "Apple aerials"),
+                    placeLabel(Prefs.saverPlace()),
+                    delay == 0 ? Ui.tr("Da TV", "TV's setting") : delay + (Ui.ru ? " мин" : " min"),
+                    background.equals("apple") ? Ui.tr("Fotos da Apple", "Apple photos")
+                            : background.equals("plain") ? Ui.tr("Gradiente", "Gradient") : Ui.tr("Automático", "Automatic"),
+                    placeLabel(Prefs.backgroundPlace())};
+        }
+
+        private String placeLabel(String place) {
+            return place.isEmpty() ? Ui.tr("Qualquer", "Any") : place;
+        }
+
+        /** "Any", then each place the videos were filmed at. */
+        private List<String> placeChoices() {
+            List<String> list = new ArrayList<>();
+            list.add("");
+            list.addAll(Aerials.places(getContext()));
+            return list;
+        }
+
+        private static int step(int at, int dir, int size) {
+            return ((at < 0 ? 0 : at) + dir + size) % size;
+        }
+
+        /** Changes the focused row of the screensaver and background screen (row 0 is the preview). */
+        private void adjustSaver(int dir) {
+            switch (focus) {
+                case 1: {
+                    int at = java.util.Arrays.asList(SAVERS).indexOf(Prefs.screensaver());
+                    Prefs.setScreensaver(SAVERS[step(at, dir, SAVERS.length)]);
+                    break;
+                }
+                case 2: {
+                    List<String> places = placeChoices();
+                    Prefs.setSaverPlace(places.get(step(places.indexOf(Prefs.saverPlace()), dir, places.size())));
+                    break;
+                }
+                case 3: {
+                    int at = 0;
+                    for (int i = 0; i < DELAYS.length; i++) if (DELAYS[i] == Prefs.saverDelay()) at = i;
+                    int minutes = DELAYS[step(at, dir, DELAYS.length)];
+                    Prefs.setSaverDelay(minutes);
+                    // Sent to the TV a few seconds after the last change (a new request replaces the one waiting).
+                    if (minutes > 0) ModeJob.schedule(getContext(), ModeJob.TIMEOUT, String.valueOf(minutes), 3000);
+                    break;
+                }
+                case 4: {
+                    int at = java.util.Arrays.asList(BACKGROUNDS).indexOf(Prefs.background());
+                    Prefs.setBackground(BACKGROUNDS[step(at, dir, BACKGROUNDS.length)]);
+                    break;
+                }
+                case 5: {
+                    List<String> places = placeChoices();
+                    Prefs.setBackgroundPlace(places.get(step(places.indexOf(Prefs.backgroundPlace()), dir, places.size())));
+                    break;
+                }
+                default:
+                    break;
+            }
         }
 
         private void askCity() {
@@ -942,7 +1007,9 @@ public class SettingsActivity extends Activity {
             String[] labels = keys ? keyLabels() : settingLabels();
             String[] values = keys ? keyValues() : settingValues();
             Paint heading = Ui.text(Ui.displaySemibold, 34 * k, 0xFFFFFFFF);
-            c.drawText(keys ? Ui.tr("Botões do Controle", "Remote Buttons") : Ui.tr("Ajustes do Início", "Home Settings"),
+            c.drawText(keys ? Ui.tr("Botões do Controle", "Remote Buttons")
+                            : screen == SAVER_SETTINGS ? Ui.tr("Descanso e fundo", "Screensaver & background")
+                            : Ui.tr("Ajustes do Início", "Home Settings"),
                     LIST_X * k + 30 * k, (LIST_TOP - 24) * k, heading);
             for (int i = 0; i < labels.length; i++) {
                 float y = (LIST_TOP + 20 + i * (LIST_ROW_H + LIST_ROW_GAP)) * k;
@@ -997,6 +1064,13 @@ public class SettingsActivity extends Activity {
                 return;
             } else if (screen == REMOTE_KEYS) {
                 openPicker(focus + 1);
+            } else if (screen == SAVER_SETTINGS && focus == 0) {
+                pause();
+                activity.showPreview();
+            } else if (screen == SAVER_SETTINGS) {
+                adjustSaver(1);
+                invalidate();
+                return;
             } else if (screen == HOME_SETTINGS && focus == CITY_ROW) {
                 askCity();
                 return;
@@ -1009,8 +1083,8 @@ public class SettingsActivity extends Activity {
                 screen = HOME_CHOICE;
                 focus = freeActive() ? 0 : 1;
             } else if (focus == 1) {
-                pause();
-                activity.showPreview();
+                screen = SAVER_SETTINGS;
+                focus = 0;
             } else if (focus == 2) {
                 screen = HOME_SETTINGS;
                 focus = 0;

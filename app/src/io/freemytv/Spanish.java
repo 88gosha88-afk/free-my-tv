@@ -106,6 +106,14 @@ final class Spanish {
             case "Picks' photos": return "Fotos de las sugerencias";
             case "Clock only": return "Solo el reloj";
             case "Background": return "Fondo";
+            case "Screensaver & background": return "Protector y fondo";
+            case "Customize": return "Ajustar";
+            case "Preview the screensaver": return "Vista previa del protector";
+            case "Screensaver place": return "Lugar del protector";
+            case "Background place": return "Lugar del fondo";
+            case "Starts after": return "Empieza tras";
+            case "TV's setting": return "El de la TV";
+            case "Any": return "Cualquiera";
             case "Apple photos": return "Fotos de Apple";
             case "Gradient": return "Degradado";
             case "On": return "Activado";

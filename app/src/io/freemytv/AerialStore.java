@@ -30,7 +30,7 @@ import javax.net.ssl.TrustManagerFactory;
  * stopped. The cache folder is the system's to empty when the TV needs space; the clips then download again.
  */
 final class AerialStore {
-    static final int KEEP = 3;
+    static final int KEEP = 3, MAX_FILES = 6;
     private static final long MIN_FREE = 700L << 20;
 
     interface Callback {
@@ -63,6 +63,7 @@ final class AerialStore {
     private final Handler main = new Handler(Looper.getMainLooper());
     private volatile Callback callback;
     private volatile boolean cancelled;
+    private volatile String wantPlace = "";
     private Thread worker;
     private SSLSocketFactory appleSockets;
 
@@ -78,17 +79,26 @@ final class AerialStore {
 
     /** The clips that are fully downloaded. */
     List<Cached> cached() {
+        return cached("");
+    }
+
+    /** The downloaded clips from `place` ("" = any). */
+    List<Cached> cached(String place) {
         List<Cached> list = new ArrayList<>();
         for (Aerials.Clip clip : Aerials.all(app)) {
+            if (!clip.isFrom(place)) continue;
             File f = fileOf(clip);
             if (f.isFile() && f.length() > 0) list.add(new Cached(clip, f));
         }
         return list;
     }
 
-    /** A random downloaded clip, not the one that just played (if there is another); null if there is none yet. */
-    Cached pick(Cached avoid) {
-        List<Cached> list = cached();
+    /**
+     * A random downloaded clip from `place` ("" = any), not the one that just played (if there is another); null if
+     * there is none yet.
+     */
+    Cached pick(Cached avoid, String place) {
+        List<Cached> list = cached(place);
         if (list.isEmpty()) return null;
         if (list.size() > 1 && avoid != null) {
             for (int i = list.size() - 1; i >= 0; i--) {
@@ -99,13 +109,15 @@ final class AerialStore {
     }
 
     /**
-     * Starts downloading until KEEP clips are on disk (does nothing if it already is). The callback hears about every
-     * finished clip and about repeated failures; clear it (null) when the screensaver stops.
+     * Starts downloading clips from `place` ("" = any) until KEEP of them are on disk (does nothing if they already
+     * are). The callback hears about every finished clip and about repeated failures; clear it (null) when the
+     * screensaver stops.
      */
-    synchronized void download(Callback cb) {
+    synchronized void download(Callback cb, String place) {
         if (cb != null) callback = cb;
+        wantPlace = place == null ? "" : place;
         if (worker != null && worker.isAlive()) return;
-        if (cached().size() >= KEEP) return;
+        if (cached(wantPlace).size() >= KEEP) return;
         cancelled = false;
         worker = new Thread(this::run, "aerials");
         worker.setPriority(Thread.MIN_PRIORITY);
@@ -123,23 +135,46 @@ final class AerialStore {
 
     private void run() {
         int failures = 0;
-        for (Aerials.Clip clip : Aerials.shuffled(app)) {
-            if (cancelled) return;
-            if (cached().size() >= KEEP) return;
-            File target = fileOf(clip);
-            if (target.isFile()) continue;
+        java.util.Set<String> failed = new java.util.HashSet<>();
+        while (!cancelled) {
+            String place = wantPlace;
+            if (cached(place).size() >= KEEP) return;
+            Aerials.Clip next = null;
+            for (Aerials.Clip clip : Aerials.shuffled(app)) {
+                if (clip.isFrom(place) && !fileOf(clip).isFile() && !failed.contains(clip.file())) {
+                    next = clip;
+                    break;
+                }
+            }
+            if (next == null) return;       // every clip from there is on disk (or failed): nothing more to fetch
             if (dir.getUsableSpace() < MIN_FREE) {
                 AppLog.w("aerials: not enough free space");
                 post(false);
                 return;
             }
-            if (fetch(clip, target)) {
+            if (fetch(next, fileOf(next))) {
                 failures = 0;
+                prune(place);
                 post(true);
-            } else if (!cancelled && ++failures >= 3) {
-                post(false);
-                return;
+            } else {
+                failed.add(next.file());
+                if (!cancelled && ++failures >= 3) {
+                    post(false);
+                    return;
+                }
             }
+        }
+    }
+
+    /** Keeps the disk use bounded: over MAX_FILES clips, the oldest ones from other places go first. */
+    private void prune(String place) {
+        List<Cached> all = cached();
+        int count = all.size();
+        if (count <= MAX_FILES) return;
+        java.util.Collections.sort(all, (x, y) -> Long.compare(x.file.lastModified(), y.file.lastModified()));
+        for (Cached c : all) {
+            if (count <= MAX_FILES) break;
+            if (!c.clip.isFrom(place) && c.file.delete()) count--;
         }
     }
 

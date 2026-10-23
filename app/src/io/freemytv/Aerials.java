@@ -27,6 +27,11 @@ final class Aerials {
             this.url = url;
         }
 
+        /** Whether this clip is from `place` ("" or null: any). */
+        boolean isFrom(String place) {
+            return place == null || place.isEmpty() || this.place.equals(place);
+        }
+
         /** The file's name at the end of the url: unique for each clip. */
         String file() {
             return url.substring(url.lastIndexOf('/') + 1);
@@ -51,6 +56,13 @@ final class Aerials {
         }
         all = list;
         return all;
+    }
+
+    /** The places the clips were filmed at, once each, in alphabetical order. */
+    static List<String> places(Context c) {
+        java.util.TreeSet<String> set = new java.util.TreeSet<>();
+        for (Clip clip : all(c)) set.add(clip.place);
+        return new ArrayList<>(set);
     }
 
     /** All the clips in a new random order. */

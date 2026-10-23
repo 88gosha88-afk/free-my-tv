@@ -97,6 +97,19 @@ final class Prefs {
 
     static void setBackground(String v) { put("background", v); }
 
+    /** Which place the screensaver's videos come from ("" = any) and which one the background's stills come from. */
+    static String saverPlace() { return sp().getString("saverPlace", ""); }
+    static void setSaverPlace(String v) { put("saverPlace", v); }
+    static String backgroundPlace() { return sp().getString("backgroundPlace", ""); }
+    static void setBackgroundPlace(String v) { put("backgroundPlace", v); }
+
+    /** Minutes of inactivity before the screensaver starts, as picked here (0: not changed, the TV's own setting). */
+    static int saverDelay() { return sp().getInt("saverDelay", 0); }
+    static void setSaverDelay(int minutes) {
+        sp().edit().putInt("saverDelay", minutes).apply();
+        version++;
+    }
+
     // MARK: - City
 
     static String city() { return sp().getString("city", Config.CITY).trim(); }

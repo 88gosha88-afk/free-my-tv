@@ -91,7 +91,7 @@ final class ScreensaverStage extends FrameLayout {
         errors = 0;
         dream.start();
         if (aerial) {
-            store.download(downloads);      // fills the cache in the background (does nothing if it is full)
+            store.download(downloads, Prefs.saverPlace());   // fills the cache in the background (does nothing if full)
             if (surface != null && player == null) playNext();
         }
     }
@@ -108,7 +108,7 @@ final class ScreensaverStage extends FrameLayout {
     /** Plays a downloaded clip from disk; with none yet, waits (the clock over the aurora) for a download to finish. */
     private void playNext() {
         if (!running || !aerial || surface == null) return;
-        AerialStore.Cached next = store.pick(playing);
+        AerialStore.Cached next = store.pick(playing, Prefs.saverPlace());
         releasePlayer();
         if (next == null) {
             dream.setMode(DreamView.CLOCK);

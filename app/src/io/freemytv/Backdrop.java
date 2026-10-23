@@ -33,6 +33,9 @@ final class Backdrop {
     final Bitmap lightImage;            // by day: the background (the lightened frosted version, scaled up on screen)
     final int[] nightFrost, nightGlass; // at night: frosted (the bottom drawer's frosted glass) and glass, darkened
     final Bitmap nightImage;            // at night: the background (the darkened frosted version)
+    /** Only for an aerial still (makeAmbient): the background at 768×432, little blurred, with more contrast. */
+    Bitmap sharpLight, sharpNight;
+    static final int SW = 768, SH = 432;
 
     private Backdrop(Bitmap image, int[] frost, int[] glass, Bitmap wide, Bitmap tall, int[] light, int[] lightGlass,
                      int[] night, int[] nightGlass) {
@@ -100,6 +103,47 @@ final class Backdrop {
         int[] frost = reduce(out, FW, FH, 3, 3);
         int[] glass = reduce(out, GW, GH, 2, 2);
         return new Backdrop(gpu(out), frost, glass, null, null, null, null, null, null);
+    }
+
+    /**
+     * The home screen background from an aerial video's still: the same pieces as the light design (cards, frosted and
+     * glass versions, a little less white than the picks' photos), but the background itself is a lightly blurred
+     * 768×432 version with more contrast, so the scene is recognizable (day: lightened a little; night: darkened).
+     */
+    static Backdrop makeAmbient(Bitmap src) {
+        Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(out);
+        Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+        float scale = Math.max((float) W / src.getWidth(), (float) H / src.getHeight());
+        float sw = src.getWidth() * scale, sh = src.getHeight() * scale;
+        c.drawBitmap(src, null, new RectF((W - sw) / 2, (H - sh) / 2, (W + sw) / 2, (H + sh) / 2), photo);
+        src.recycle();
+        Bitmap wide = card(out, WIDE_W, WIDE_H), tall = card(out, TALL_W, TALL_H);
+        int[] frost = reduce(out, FW, FH, 3, 3);
+        int[] glass = reduce(out, GW, GH, 2, 2);
+        int[] sharp = reduce(out, SW, SH, 1, 1);
+        out.recycle();
+        Backdrop b = new Backdrop(null, frost, null, wide, tall, whiten(frost.clone(), 0.6f), whiten(glass.clone(), 0.58f),
+                darken(frost.clone(), 0.76f), darken(glass, 0.56f));
+        b.sharpLight = Bitmap.createBitmap(whiten(contrast(sharp.clone(), 1.18f), 0.26f), SW, SH, Bitmap.Config.ARGB_8888);
+        b.sharpNight = Bitmap.createBitmap(darken(contrast(sharp, 1.1f), 0.5f), SW, SH, Bitmap.Config.ARGB_8888);
+        return b;
+    }
+
+    /** Pushes each color channel away from the middle gray (1 = unchanged). */
+    private static int[] contrast(int[] px, float amount) {
+        for (int i = 0; i < px.length; i++) {
+            int p = px[i];
+            int r = clamp((int) (((p >> 16) & 255) - 128) * amount + 128);
+            int g = clamp((int) (((p >> 8) & 255) - 128) * amount + 128);
+            int b = clamp((int) ((p & 255) - 128) * amount + 128);
+            px[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+        }
+        return px;
+    }
+
+    private static int clamp(float v) {
+        return v < 0 ? 0 : v > 255 ? 255 : Math.round(v);
     }
 
     /** How many times smaller the screensaver photo's frosted version is (the glass math uses the same number). */

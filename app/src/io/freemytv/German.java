@@ -114,6 +114,14 @@ final class German {
             case "Picks' photos": return "Fotos der Empfehlungen";
             case "Clock only": return "Nur die Uhr";
             case "Background": return "Hintergrund";
+            case "Screensaver & background": return "Bildschirmschoner & Hintergrund";
+            case "Customize": return "Anpassen";
+            case "Preview the screensaver": return "Vorschau des Bildschirmschoners";
+            case "Screensaver place": return "Ort des Bildschirmschoners";
+            case "Background place": return "Ort des Hintergrunds";
+            case "Starts after": return "Startet nach";
+            case "TV's setting": return "Wie im Fernseher";
+            case "Any": return "Beliebig";
             case "Apple photos": return "Apple-Fotos";
             case "Gradient": return "Verlauf";
             case "On": return "An";

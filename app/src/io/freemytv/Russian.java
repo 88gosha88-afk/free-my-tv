@@ -113,6 +113,14 @@ final class Russian {
             case "Picks' photos": return "Фото подборок";
             case "Clock only": return "Только часы";
             case "Background": return "Фон";
+            case "Screensaver & background": return "Заставка и фон";
+            case "Customize": return "Настроить";
+            case "Preview the screensaver": return "Предпросмотр заставки";
+            case "Screensaver place": return "Место для заставки";
+            case "Background place": return "Место для фона";
+            case "Starts after": return "Включается через";
+            case "TV's setting": return "Как в ТВ";
+            case "Any": return "Любое";
             case "Apple photos": return "Фото Apple";
             case "Gradient": return "Градиент";
             case "On": return "Вкл.";

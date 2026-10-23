@@ -144,6 +144,27 @@ final class HomeMode {
         if (RemoteKeys.supported()) ModeJob.schedule(c, ModeJob.REMOTE, null, delayMs);
     }
 
+    /**
+     * The minutes of inactivity before the screensaver starts (the TV's screen timeout: Android TV's Settings > Screen
+     * saver > Start time). Only whole minutes from 1 to 120 go into the command.
+     */
+    static void setScreensaverDelayNow(Context app, String minutes) {
+        int m;
+        try {
+            m = Integer.parseInt(minutes.trim());
+        } catch (NumberFormatException e) {
+            return;
+        }
+        if (m < 1 || m > 120) return;
+        try (Adb adb = Adb.connect(app, 10_000, null)) {
+            adb.shell("settings put system screen_off_timeout " + (m * 60_000L));
+            AppLog.w("screensaver starts after " + m + " min (now "
+                    + adb.shell("settings get system screen_off_timeout").trim() + " ms)");
+        } catch (IOException e) {
+            AppLog.w("screensaver delay: " + e.getMessage());
+        }
+    }
+
     static void ensureRemoteServiceNow(Context app) {
         if (!RemoteKeys.supported() || !FREE.equals(state(app).optString("mode"))) return;
         try (Adb adb = Adb.connect(app, 10_000, null)) {

@@ -36,6 +36,7 @@ final class Ambient {
     private volatile boolean building;
     private volatile Runnable listener;
     private File last;
+    private volatile String builtPlace = "";
 
     private Ambient(Context c) {
         app = c;
@@ -48,11 +49,12 @@ final class Ambient {
     Backdrop backdrop(boolean download, Runnable onReady) {
         listener = onReady;
         Backdrop b = backdrop;
-        boolean stale = b == null || SystemClock.elapsedRealtime() - builtAt >= REFRESH_MS;
+        String place = Prefs.backgroundPlace();
+        boolean stale = b == null || !place.equals(builtPlace) || SystemClock.elapsedRealtime() - builtAt >= REFRESH_MS;
         if (stale && !building) {
             building = true;
             AerialStore store = AerialStore.get(app);
-            if (download && store.cached().isEmpty()) store.download(null);
+            if (download && store.cached(place).isEmpty()) store.download(null, place);
             io.execute(this::build);
         }
         return b;
@@ -60,15 +62,17 @@ final class Ambient {
 
     private void build() {
         try {
-            List<AerialStore.Cached> clips = AerialStore.get(app).cached();
+            String place = Prefs.backgroundPlace();
+            List<AerialStore.Cached> clips = AerialStore.get(app).cached(place);
             if (clips.isEmpty()) return;
             AerialStore.Cached pick = clips.get((int) (Math.random() * clips.size()));
             if (clips.size() > 1 && pick.file.equals(last)) pick = clips.get((clips.indexOf(pick) + 1) % clips.size());
             Bitmap frame = frameOf(pick.file);
             if (frame == null) return;
             last = pick.file;
-            // Livelier than the picks' photos (which go almost white): the scene's colors should show.
-            backdrop = Backdrop.make(frame, true, 0.6f, 0.58f);
+            // Sharper and more contrasty than the picks' photos (which go almost white): the scene should show.
+            backdrop = Backdrop.makeAmbient(frame);
+            builtPlace = place;
             builtAt = SystemClock.elapsedRealtime();
             main.post(() -> {
                 Runnable r = listener;
