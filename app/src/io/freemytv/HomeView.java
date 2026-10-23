@@ -1227,11 +1227,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (fade <= 0.01f) return;
         int textColor = text.getColor();
         text.setColor(Ui.alpha(textColor, fade));
-        int n = HomeData.coinCount();
+        // One read of the list, so n always matches the coins drawn below.
+        int[] coins = HomeData.active();
+        int n = coins.length;
         if (n == 0) { text.setColor(textColor); return; }
         // Measured once per set of prices: this row is redrawn on every frame of the cards' focus animation, and
         // measuring text there cost ~3 ms a frame on a Mi Box 3.
-        int[] coins = HomeData.active();
         Quotes q = quotes;
         if (q == null || !q.matches(coins, data.prices, text.getTextSize())) {
             q = quotes = new Quotes(coins, data.prices, text);
