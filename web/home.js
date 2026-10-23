@@ -316,13 +316,13 @@
       face(shelf[i], t, wordFit(shelf[i].title, tw, 30));
       hover(t, Z.SHELF, i);
     }
-    // More apps than fit: an arrow in the glass's edge on each side that has more.
+    // More apps than fit: an arrow just outside the glass on each side that has more, where no tile reaches.
     platter.innerHTML = '';
     for (var a = 0; a < 2; a++) {
       var arrow = sym('chevron_right', platter);
       arrow.className += a ? ' more' : ' more back';
-      arrow.style.left = (a ? width + pad * 1.5 : pad / 2) - 11 + 'px';
-      arrow.style.top = (pad + th / 2 - 11) + 'px';
+      arrow.style.left = (a ? width + 2 * pad + 20 : -20) - 14 + 'px';
+      arrow.style.top = (pad + th / 2 - 14) + 'px';
     }
     st.shelf = Math.min(st.shelf, Math.max(0, shelf.length - 1));
     placeTiles();

@@ -1316,9 +1316,10 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
         }
         c.restore();
-        // More apps than fit: an arrow in the glass's edge on each side that has more.
-        float cy = platterRect.centerY(), size = 22 * k, inset = SHELF_PAD * k / 2;
-        int ink = tone(0x66000000, 0x66FFFFFF);
+        // More apps than fit: an arrow just outside the glass on each side that has more, where no tile reaches even
+        // focused.
+        float cy = platterRect.centerY(), size = 28 * k, inset = -20 * k;
+        int ink = tone(0x99000000, 0xCCFFFFFF);
         if (last < shelf.size()) Symbols.draw(getContext(), c, "chevron_right", platterRect.right - inset, cy, size, ink);
         if (shelfFirst > 0) {
             c.save();
@@ -1352,6 +1353,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         tmp.offset(0, (4 + 14 * f + 6 * l) * k);
         shadowDeep.setColor(Ui.alpha(0xFF000000, tone(0.14f, 0.3f) + tone(0.18f, 0.3f) * fc + 0.14f * Ui.clamp(l)));
         shadows.draw(c, tmp, r0, DEEP_BLUR * k, shadowDeep);
+        // At night that shadow is lost on the dark glass: the focused app casts the same one in light, a soft glow.
+        float glow = fc * night;
+        if (glow > 0.01f) {
+            shadowDeep.setColor(Ui.alpha(0xFFFFFFFF, 0.45f * glow));
+            shadows.draw(c, tmp, r0, DEEP_BLUR * k, shadowDeep);
+        }
         c.restore();
         int[] style = TILE_STYLE.get(it.key);
         if (it.logo != null && style != null) {
