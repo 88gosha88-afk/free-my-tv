@@ -62,6 +62,22 @@ final class SleepTimer {
         }
     }
 
+    private static boolean listening;
+
+    /**
+     * The TV turned off some other way (the remote, HDMI-CEC) while the timer ran: the timer ends there, as the alarm
+     * would leave the TV on anyway, and the pill goes. Heard by the processes that run while it does (:home, :sleep).
+     */
+    static synchronized void listen(Context c) {
+        if (listening) return;
+        listening = true;
+        c.getApplicationContext().registerReceiver(new android.content.BroadcastReceiver() {
+            @Override public void onReceive(Context context, Intent i) {
+                stop(context);
+            }
+        }, new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF));
+    }
+
     /** 45 min, 1 h, 1 h 30 min: the timer's times, in the list and as they run down. */
     static String duration(int minutes) {
         return minutes < 60 ? Ui.trf("{n} min", "n", minutes) : minutes % 60 == 0 ? Ui.trf("{n} h", "n", minutes / 60)

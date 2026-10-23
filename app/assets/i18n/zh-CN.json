@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "按 OK 添加或移除（最多 {n} 个）。← → 调整顺序。",
  "OK adds or removes a button. ← → change the order.": "按 OK 添加或移除按钮。← → 调整顺序。",
  "OK adds or removes an app. ← → change the order.": "按 OK 添加或移除应用。← → 调整顺序。",
+ "OK opens the list. ← → change the value.": "按 OK 打开列表，← → 更改数值。",
  "OK or the arrows change the value.": "按 OK 或方向键更改数值。",
  "OK picks, Back cancels.": "OK 选择，返回取消。",
  "OK removes them; the arrows turn them on or off.": "按 OK 删除；方向键开启或关闭。",

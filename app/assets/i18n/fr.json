@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "OK ajoute ou retire (jusqu'à {n}). ← → changent l'ordre.",
  "OK adds or removes a button. ← → change the order.": "OK ajoute ou retire un bouton. ← → changent l'ordre.",
  "OK adds or removes an app. ← → change the order.": "OK ajoute ou retire une appli. ← → changent l'ordre.",
+ "OK opens the list. ← → change the value.": "OK ouvre la liste. ← → changent la valeur.",
  "OK or the arrows change the value.": "OK ou les flèches changent la valeur.",
  "OK picks, Back cancels.": "OK choisit, Retour annule.",
  "OK removes them; the arrows turn them on or off.": "OK les supprime ; les flèches les activent ou les désactivent.",

@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "OK přidá nebo odebere (až {n}). ← → mění pořadí.",
  "OK adds or removes a button. ← → change the order.": "OK přidá nebo odebere tlačítko. ← → mění pořadí.",
  "OK adds or removes an app. ← → change the order.": "OK přidá nebo odebere aplikaci. ← → mění pořadí.",
+ "OK opens the list. ← → change the value.": "OK otevře seznam. ← → mění hodnotu.",
  "OK or the arrows change the value.": "OK nebo šipky mění hodnotu.",
  "OK picks, Back cancels.": "OK vybere, Zpět zruší.",
  "OK removes them; the arrows turn them on or off.": "OK je odstraní; šipky je zapínají a vypínají.",

@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "OK додає або прибирає (до {n}). ← → змінюють порядок.",
  "OK adds or removes a button. ← → change the order.": "OK додає або прибирає кнопку. ← → змінюють порядок.",
  "OK adds or removes an app. ← → change the order.": "OK додає або прибирає застосунок. ← → змінюють порядок.",
+ "OK opens the list. ← → change the value.": "OK відкриває список, ← → змінюють значення.",
  "OK or the arrows change the value.": "OK або стрілки змінюють значення.",
  "OK picks, Back cancels.": "OK — вибрати, «Назад» — скасувати.",
  "OK removes them; the arrows turn them on or off.": "OK видаляє їх; стрілки вмикають або вимикають.",

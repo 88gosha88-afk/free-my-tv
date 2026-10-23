@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "OK lägger till eller tar bort (upp till {n}). ← → ändrar ordningen.",
  "OK adds or removes a button. ← → change the order.": "OK lägger till eller tar bort en knapp. ← → ändrar ordningen.",
  "OK adds or removes an app. ← → change the order.": "OK lägger till eller tar bort en app. ← → ändrar ordningen.",
+ "OK opens the list. ← → change the value.": "OK öppnar listan. ← → ändrar värdet.",
  "OK or the arrows change the value.": "OK eller pilarna ändrar värdet.",
  "OK picks, Back cancels.": "OK väljer, Tillbaka avbryter.",
  "OK removes them; the arrows turn them on or off.": "OK tar bort dem; pilarna slår på eller av dem.",

@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "Το OK προσθέτει ή αφαιρεί (έως {n}). Τα ← → αλλάζουν τη σειρά.",
  "OK adds or removes a button. ← → change the order.": "Το OK προσθέτει ή αφαιρεί ένα κουμπί. Τα ← → αλλάζουν τη σειρά.",
  "OK adds or removes an app. ← → change the order.": "Το OK προσθέτει ή αφαιρεί μια εφαρμογή. Τα ← → αλλάζουν τη σειρά.",
+ "OK opens the list. ← → change the value.": "Το OK ανοίγει τη λίστα. Τα ← → αλλάζουν την τιμή.",
  "OK or the arrows change the value.": "Το OK ή τα βέλη αλλάζουν την τιμή.",
  "OK picks, Back cancels.": "OK για επιλογή, Πίσω για ακύρωση.",
  "OK removes them; the arrows turn them on or off.": "Το OK τις αφαιρεί· τα βέλη τις ενεργοποιούν ή απενεργοποιούν.",

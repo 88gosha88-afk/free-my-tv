@@ -31,7 +31,7 @@ public class SleepOverlay extends Service {
     private BitmapDrawable moon;
     private GradientDrawable pill;
     private long endsAt, sunrise, sunset;
-    private String theme = "auto";
+    private String theme = "auto", language;
 
     /** Settings > Sleep Timer > Position: the top center first, then around the screen. */
     private static final int[] GRAVITY = {Gravity.TOP | Gravity.CENTER_HORIZONTAL, Gravity.TOP | Gravity.RIGHT,
@@ -58,7 +58,8 @@ public class SleepOverlay extends Service {
     static void update(Context c) {
         HomeData.Weather w = HomeData.get(c).weather;
         Intent i = new Intent(c, SleepOverlay.class).putExtra("endsAt", Prefs.sleepAt()).putExtra("place", Prefs.sleepPlace())
-                .putExtra("theme", Prefs.theme()).putExtra("sunrise", w.sunrise).putExtra("sunset", w.sunset);
+                .putExtra("theme", Prefs.theme()).putExtra("sunrise", w.sunrise).putExtra("sunset", w.sunset)
+                .putExtra("language", Prefs.language());
         boolean wanted = Prefs.sleepShown() && SleepTimer.minutesLeft(c) > 0;
         if (wanted && Settings.canDrawOverlays(c)) {
             c.startForegroundService(i);
@@ -117,6 +118,7 @@ public class SleepOverlay extends Service {
         startForeground(1, new Notification.Builder(this, "sleep").setSmallIcon(R.drawable.icon)
                 .setContentTitle(Ui.tr("Sleep Timer")).build());
         Ui.init(this);   // its own process: the app's font isn't loaded here yet
+        SleepTimer.listen(this);
         float k = getResources().getDisplayMetrics().widthPixels / 1920f;
         view = new TextView(this);
         view.setTypeface(Ui.regular);
@@ -137,13 +139,18 @@ public class SleepOverlay extends Service {
         getSystemService(WindowManager.class).addView(view, layout);
     }
 
-    /** Every update (a new time, Position, Theme): drawn again now. */
+    /** Every update (a new time, Position, Theme, Language): drawn again now. */
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) {
             stopSelf();
             return START_NOT_STICKY;
         }
         endsAt = intent.getLongExtra("endsAt", 0);
+        String lang = intent.getStringExtra("language");
+        if (lang != null && !lang.equals(language)) {   // a new one from the settings: this process has its own catalogue
+            language = lang;
+            Ui.applyLanguage(lang);
+        }
         theme = intent.getStringExtra("theme");
         sunrise = intent.getLongExtra("sunrise", 0);
         sunset = intent.getLongExtra("sunset", 0);

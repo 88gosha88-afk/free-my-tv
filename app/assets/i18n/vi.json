@@ -86,6 +86,7 @@
  "OK adds or removes (up to {n}). ← → change the order.": "OK để thêm hoặc bỏ (tối đa {n}). ← → để đổi thứ tự.",
  "OK adds or removes a button. ← → change the order.": "OK để thêm hoặc bỏ nút. ← → để đổi thứ tự.",
  "OK adds or removes an app. ← → change the order.": "OK để thêm hoặc bỏ ứng dụng. ← → để đổi thứ tự.",
+ "OK opens the list. ← → change the value.": "OK để mở danh sách. ← → để đổi giá trị.",
  "OK or the arrows change the value.": "OK hoặc phím mũi tên để đổi giá trị.",
  "OK picks, Back cancels.": "OK để chọn, Quay lại để hủy.",
  "OK removes them; the arrows turn them on or off.": "OK để xóa; phím mũi tên để bật hoặc tắt.",
