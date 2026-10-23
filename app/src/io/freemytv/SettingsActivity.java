@@ -168,6 +168,7 @@ public class SettingsActivity extends Activity {
         private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
         private Toast whyToast;   // why the focused option is unavailable
         private String[] whyRows;  // each row's reason, worked out once per screen (null: again on the next frame)
+        private int whyScreen = -1, whyScroll = -1;
         private String errorShown;
         private final Spoken spoken;
         private long startedAt, lastNanos, pendingAt, lastSky;
@@ -617,7 +618,6 @@ public class SettingsActivity extends Activity {
 
         boolean onKey(KeyEvent e) {
             boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
-            whyRows = null;   // a key can change the screen, or what a row needs
             switch (e.getKeyCode()) {
                 case KeyEvent.KEYCODE_DPAD_UP:
                     if (down && focus > 0) focus--;
@@ -765,8 +765,10 @@ public class SettingsActivity extends Activity {
         private String unavailable(int i) {
             int n = rowCount();
             if (i < 0 || i >= n) return null;
-            if (whyRows == null || whyRows.length != n) {
+            if (whyRows == null || whyRows.length != n || whyScreen != screen || whyScroll != pickScroll) {
                 whyRows = new String[n];
+                whyScreen = screen;
+                whyScroll = pickScroll;
                 for (int r = 0; r < n; r++) {
                     String need = need(r);
                     whyRows[r] = screen == HOME_SETTINGS && r >= COIN_ROWS && !Prefs.quotes()
@@ -938,6 +940,7 @@ public class SettingsActivity extends Activity {
 
         /** Changes the focused row's value one step (OK and → go forward, ← goes back). */
         private void adjust(int dir) {
+            whyRows = null;   // a value changed: what other rows need may have too
             if (unavailable(focus) != null) return;
             if (screen == POWER) {
                 int row = powerRow();
@@ -1268,6 +1271,7 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
+            whyRows = null;
             Context c = getContext();
             if (tellWhy()) return;
             if (screen == HOME_CHOICE) {
