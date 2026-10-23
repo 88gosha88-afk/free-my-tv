@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.LauncherApps;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.BlurMaskFilter;
@@ -19,6 +20,7 @@ import android.media.tv.TvInputManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.os.UserHandle;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
@@ -225,6 +227,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean running, tilesDirty, statusDirty, heroDirty, drawerDirty, gridDirty, motionDirty = true;
     private boolean drawerWasMoving, idle;
     private long lastNanos, resumedAt, lastStep;
+    private static final long BURST_MS = 1500;
     private int w, h;
     private float k = 1;
     private String clockText = "", dateText = "", weatherLine = "";
@@ -318,6 +321,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private final Runnable reloadSoon = this::reload;
+    private static final long APPS_MAX_AGE_MS = 15 * 60_000;
+    private final LauncherApps launcherApps;
+    private boolean appsStale = true;
+    private int appsVersion, appsGeneration;
+    private long appsAt;
 
     private final TvInputManager.TvInputCallback inputCallback = new TvInputManager.TvInputCallback() {
         @Override public void onInputStateChanged(String inputId, int state) { reloadSoon(); }
@@ -352,6 +360,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         click = new Click(a);
         ui = a.getSharedPreferences("home-ui", Context.MODE_PRIVATE);
         tvInputs = (TvInputManager) a.getSystemService(Context.TV_INPUT_SERVICE);
+        launcherApps = (LauncherApps) a.getSystemService(Context.LAUNCHER_APPS_SERVICE);
+        if (launcherApps != null) launcherApps.registerCallback(packages, handler);
         setFocusable(true);
         sky = new Layer(a, SKY);
         heroLayer = new Layer(a, HERO);
@@ -398,7 +408,11 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (running) return;
         running = true;
         checkNight(false);
-        resumedAt = SystemClock.uptimeMillis();
+        long now = SystemClock.uptimeMillis();
+        // Some remotes (Xiaomi's) send one Home press as a burst of 5 to 8, and each one pauses and resumes the home
+        // screen: those after the first change nothing, so the lists are read only once.
+        boolean again = resumedAt != 0 && now - resumedAt < BURST_MS;
+        resumedAt = now;
         lastNanos = 0;
         lastStep = 0;
         data.addListener(this);
@@ -408,7 +422,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (tvInputs != null) tvInputs.registerCallback(inputCallback, handler);
         handler.postDelayed(tick, 15_000);
         checkNotices();
-        reload();
+        if (!again) reload();
         updatePalette();
         updatePicks();
         if (sheetOpen) closeSheet();
@@ -436,6 +450,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     void destroy() {
         pause();
+        if (launcherApps != null) launcherApps.unregisterCallback(packages);
         click.release();
     }
 
@@ -1925,18 +1940,43 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
 
     private void reload() {
         final Context c = getContext().getApplicationContext();
+        // The shelf and All Apps (100 to 500 ms of package queries on a TV) only when they can have changed.
+        long up = SystemClock.uptimeMillis();
+        final boolean apps = appsStale || Prefs.version != appsVersion || Ui.generation != appsGeneration
+                || up - appsAt > APPS_MAX_AGE_MS;
+        if (apps) {
+            appsStale = false;
+            appsVersion = Prefs.version;
+            appsGeneration = Ui.generation;
+            appsAt = up;
+        }
         LOADER.execute(() -> {
-            final List<HomeApps.Item> s = HomeApps.shelf(c, true);
+            final List<HomeApps.Item> s = apps ? HomeApps.shelf(c, true) : null;
             final List<HomeApps.Item> st = statusList(c);
             final List<HomeApps.Item> d = drawerList(c);
-            final List<HomeApps.Item> o = HomeApps.others(c);
+            final List<HomeApps.Item> o = apps ? HomeApps.others(c) : null;
             handler.post(() -> {
-                setShelf(s);
+                if (s != null) setShelf(s);
                 setStatusItems(st);
                 setDrawerItems(d);
-                if (!sheetOpen) setOthers(o);
+                if (o != null && !sheetOpen) setOthers(o);
+                else if (o != null) appsStale = true;   // All Apps is open: its list comes next time
             });
         });
+    }
+
+    /** Apps installed, removed or updated (also while another app is open): the next reload reads them again. */
+    private final LauncherApps.Callback packages = new LauncherApps.Callback() {
+        @Override public void onPackageAdded(String pkg, UserHandle user) { appsChanged(); }
+        @Override public void onPackageRemoved(String pkg, UserHandle user) { appsChanged(); }
+        @Override public void onPackageChanged(String pkg, UserHandle user) { appsChanged(); }
+        @Override public void onPackagesAvailable(String[] pkgs, UserHandle user, boolean replacing) { appsChanged(); }
+        @Override public void onPackagesUnavailable(String[] pkgs, UserHandle user, boolean replacing) { appsChanged(); }
+    };
+
+    private void appsChanged() {
+        appsStale = true;
+        if (running) reloadSoon();
     }
 
     // MARK: - Keys: only the arrows, OK and Back (system keys pass through to the system)
