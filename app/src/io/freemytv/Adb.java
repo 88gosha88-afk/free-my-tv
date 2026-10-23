@@ -6,6 +6,7 @@ import android.util.Base64;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -89,7 +90,7 @@ final class Adb implements Closeable {
                 Message m;
                 try {
                     m = adb.read();
-                } catch (SocketTimeoutException e) {
+                } catch (EOFException | SocketTimeoutException e) {
                     throw new IOException(offeredKey ? Ui.tr("debugging permission wasn't accepted on the TV") : Ui.tr("the TV's ADB didn't respond"));
                 }
                 if (m.command == CNXN) {

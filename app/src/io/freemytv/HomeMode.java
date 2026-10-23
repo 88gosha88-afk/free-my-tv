@@ -40,6 +40,12 @@ final class HomeMode {
     static final String DREAM = PKG + "/" + PKG + (Build.VERSION.SDK_INT == 30 ? ".ScreensaverAlone" : ".Screensaver");
     static final String FREE = "free", ORIGINAL = "original";
 
+    /**
+     * Fire TV (Fire OS): Amazon's launcher keeps the Home button (`priority=950` on `CATEGORY_HOME`), so the switch
+     * refuses Free My TV mode while Original and the watchdog still run.
+     */
+    static final boolean AMAZON = "Amazon".equalsIgnoreCase(Build.MANUFACTURER) || "Amazon".equalsIgnoreCase(Build.BRAND);
+
     /** Classic Android TV's home screen; its recommendations service crashes on the screensaver while it's off (#11). */
     static final String TV_LAUNCHER = "com.google.android.tvlauncher";
     static final String TV_RECOMMENDATIONS = "com.google.android.tvrecommendations";
@@ -136,7 +142,18 @@ final class HomeMode {
         "com.fengmi.projector.imaging", "com.fengmi.platform", "com.fengmi.Autopair", "com.fengmi.fmsettings",
         "com.fengmi.testsuite", "android.autoinstalls.config.fomovie",
         "uk.co.freeview.tifbridge",
-        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth"));
+        "uk.co.freeview.mdsclient", "uk.co.freeview.fvpconfigauth",
+        // Amazon Fire TV: launcher, settings, setup, remote pairing, inputs, live TV, channel scan, OTA updates, Appstore
+        // (every com.amazon.* is refused by mayTurnOff too)
+        "com.amazon.tv.launcher", "com.amazon.firehomestarter", "com.amazon.tv.settings.v2", "com.amazon.tv.settings.core",
+        "com.amazon.tv.settings.mediatek", "com.amazon.tv.settingsprovider.configuration", "com.amazon.android.settings",
+        "com.amazon.tv.quicksettings", "com.amazon.tv.quicksettings.ui", "com.amazon.tv.oobe", "com.amazon.device.blepa",
+        "com.amazon.device.bluetoothpa", "com.amazon.device.bluetoothdfu", "com.amazon.autopairservice",
+        "com.amazon.fireinputdevices", "com.amazon.tv.inputpreference.service", "com.amazon.franktvinput",
+        "com.amazon.tv.livetv", "com.amazon.mediatek.livetv", "com.amazon.tv.channelscan",
+        "com.amazon.tv.conditionalaccess", "com.amazon.tv.devicecontrol", "com.amazon.tv.devicecontrolsettings",
+        "com.amazon.tv.routing", "com.amazon.tv.ime", "com.amazon.tv.keypolicymanager", "com.amazon.ftv.screensaver",
+        "com.amazon.device.software.ota", "com.amazon.webview.chromium", "com.amazon.venezia", "amazon.fireos"));
 
     /**
      * Android's own pieces: with one of them off, a TV may not start again (a list that took the permission
@@ -148,9 +165,10 @@ final class HomeMode {
     /** Factory and service menus, on any brand ("com.tcl.factory.view", "com.cvte.tv.fac.aging", "mediatek.factorymenu.ui"). */
     private static final Pattern FACTORY = Pattern.compile("(.*\\.)?(factory|factorymenu|facmenu|fac|hkcfac|testpq)(\\..*)?");
 
-    /** Checked before every disable: never the protected list, Android's own pieces or a factory menu. */
+    /** Checked before every disable: never the protected list, Amazon's packages, Android's own pieces or a factory menu. */
     private static boolean mayTurnOff(String pkg) {
-        return !PROTECTED.contains(pkg) && !CORE.matcher(pkg).matches() && !FACTORY.matcher(pkg).matches();
+        return !PROTECTED.contains(pkg) && !pkg.startsWith("com.amazon.")
+                && !CORE.matcher(pkg).matches() && !FACTORY.matcher(pkg).matches();
     }
 
     /**
@@ -193,6 +211,7 @@ final class HomeMode {
 
     /** After the TV boots (and after a TV update): wait for the system to settle and check Free My TV mode. */
     static void bootCheck(Context c) {
+        if (AMAZON) return;
         ensureRemoteService(c, 30_000);
         ModeJob.schedule(c, ModeJob.VERIFY, null, 45_000);
     }
@@ -263,6 +282,10 @@ final class HomeMode {
 
     private static void applyFree(Context c) {
         JSONObject s = state(c);
+        if (AMAZON) {
+            done(c, Ui.tr("On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps."));
+            return;
+        }
         // Kalley 43G200 turns Google TV's setup app back on at every start: without its home screen the next start
         // looped at the logo, and that TV only came back with a USB reflash (CleanYourTV, examples/kalley-43g200).
         if ("R3_GTV".equals(Build.DEVICE)) {
@@ -309,6 +332,11 @@ final class HomeMode {
             busy(c, Ui.tr("Switching the home screen and screensaver…"));
             Watchdog.clear(c);
             check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
+                    Ui.tr("Android didn't accept the new home screen"));
+            // Some firmware (Fire OS: priority=950 on its launcher) prints "Success" and updates the HOME role while
+            // resolve-activity still picks the TV's own launcher: stop before turning anything off.
+            check(adb.shell("cmd package resolve-activity --brief --user 0 -a android.intent.action.MAIN"
+                    + " -c android.intent.category.HOME"), PKG + "/",
                     Ui.tr("Android didn't accept the new home screen"));
             adb.shell("settings put secure screensaver_components " + DREAM);
             JSONObject started = state(c);
@@ -544,7 +572,7 @@ final class HomeMode {
                 s.remove("busy");
                 save(app, s);
             } catch (JSONException ignored) {}
-            if (!FREE.equals(s.optString("mode"))) return;
+            if (!FREE.equals(s.optString("mode")) || AMAZON) return;
             List<String> fixed = new ArrayList<>();
             try (Adb adb = Adb.connect(app, 10_000, null)) {
                 Set<String> present = packages(adb, "");

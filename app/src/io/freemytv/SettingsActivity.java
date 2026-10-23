@@ -49,14 +49,30 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (openFireHome(getIntent())) return;
         Watchdog.install(this);
         Ui.init(this);
         view = new SettingsView(this);
         setContentView(view);
     }
 
+    /**
+     * Fire TV: Amazon keeps the Home button, so the app's icon opens the home screen (FireHomeActivity) directly;
+     * the gear on the home screen opens these settings (no launcher category).
+     */
+    private boolean openFireHome(Intent intent) {
+        if (!HomeMode.AMAZON || intent == null || !(intent.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                || intent.hasCategory(Intent.CATEGORY_LAUNCHER)) || intent.getBooleanExtra("screensaver", false)) {
+            return false;
+        }
+        startActivity(new Intent(this, FireHomeActivity.class));
+        finish();
+        return true;
+    }
+
     @Override protected void onResume() {
         super.onResume();
+        if (view == null) return;
         view.resume();
         // From ADB: am start -n io.freemytv/.SettingsActivity --ez screensaver true (straight to the preview).
         if (preview == null && getIntent().getBooleanExtra("screensaver", false)) {
@@ -68,12 +84,13 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (openFireHome(intent)) return;
         setIntent(intent);
     }
 
     @Override protected void onPause() {
         closePreview();     // before pausing the view: closing the preview resumes it (view.resume)
-        view.pause();
+        if (view != null) view.pause();
         super.onPause();
     }
 
