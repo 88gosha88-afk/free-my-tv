@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK για επιλογή, Πίσω για ακύρωση.",
  "OK removes them; the arrows turn them on or off.": "Το OK τις αφαιρεί· τα βέλη τις ενεργοποιούν ή απενεργοποιούν.",
  "Off": "Ανενεργό",
- "Off in {n} min": "Απενεργοποίηση σε {n} λεπ.",
+ "Off in {time}": "Απενεργοποίηση σε {time}",
  "Okko button": "Κουμπί Okko",
  "On": "Ενεργό",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Στο Fire TV το κουμπί Αρχική ανήκει στην αρχική οθόνη της Amazon. Εδώ το Free My TV μένει εφαρμογή: ανοίξτε το από τις εφαρμογές σας.",
@@ -228,7 +228,7 @@
  "{n} h ago": "πριν από {n} ώ.",
  "{n} min": "{n} λεπ.",
  "{n} min ago": "πριν από {n} λ.",
- "{n} min left": "απομένουν {n} λεπ.",
  "{n} ms": "{n} ms",
+ "{time} left": "απομένουν {time}",
  "← → to move · OK to drop · Back to cancel": "← → μετακίνηση · OK τοποθέτηση · Πίσω ακύρωση"
 }

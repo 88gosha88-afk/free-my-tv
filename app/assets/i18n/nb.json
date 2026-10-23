@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK velger, Tilbake avbryter.",
  "OK removes them; the arrows turn them on or off.": "OK fjerner dem; pilene slår dem av eller på.",
  "Off": "Av",
- "Off in {n} min": "Slås av om {n} min",
+ "Off in {time}": "Slås av om {time}",
  "Okko button": "Okko-knappen",
  "On": "På",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "På Fire TV tilhører Hjem-knappen Amazons startskjerm. Her forblir Free My TV en app: åpne den fra appene dine.",
@@ -228,7 +228,7 @@
  "{n} h ago": "for {n} t siden",
  "{n} min": "{n} min",
  "{n} min ago": "for {n} min siden",
- "{n} min left": "{n} min igjen",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} igjen",
  "← → to move · OK to drop · Back to cancel": "← → flytt · OK slipp · Tilbake avbryt"
 }

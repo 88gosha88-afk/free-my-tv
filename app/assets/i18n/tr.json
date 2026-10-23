@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK seçer, Geri iptal eder.",
  "OK removes them; the arrows turn them on or off.": "OK onları kaldırır; oklar açar veya kapatır.",
  "Off": "Kapalı",
- "Off in {n} min": "{n} dk sonra kapanacak",
+ "Off in {time}": "{time} sonra kapanacak",
  "Okko button": "Okko tuşu",
  "On": "Açık",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Fire TV'de Ana Ekran düğmesi Amazon'un ana ekranına aittir. Burada Free My TV bir uygulama olarak kalır: uygulamalarınızdan açın.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} sa önce",
  "{n} min": "{n} dk",
  "{n} min ago": "{n} dk önce",
- "{n} min left": "{n} dk kaldı",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} kaldı",
  "← → to move · OK to drop · Back to cancel": "← → taşı · OK bırak · Geri iptal"
 }

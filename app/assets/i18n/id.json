@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK memilih, Kembali membatalkan.",
  "OK removes them; the arrows turn them on or off.": "OK menghapusnya; tanda panah menyalakan atau mematikannya.",
  "Off": "Mati",
- "Off in {n} min": "Mati dalam {n} mnt",
+ "Off in {time}": "Mati dalam {time}",
  "Okko button": "Tombol Okko",
  "On": "Nyala",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Di Fire TV tombol Home milik layar utama Amazon. Di sini Free My TV tetap menjadi aplikasi: buka dari daftar aplikasi Anda.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} jam lalu",
  "{n} min": "{n} mnt",
  "{n} min ago": "{n} mnt lalu",
- "{n} min left": "{n} mnt lagi",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} lagi",
  "← → to move · OK to drop · Back to cancel": "← → pindahkan · OK letakkan · Kembali batalkan"
 }

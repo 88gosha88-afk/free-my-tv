@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK valitsee, Takaisin peruuttaa.",
  "OK removes them; the arrows turn them on or off.": "OK poistaa ne; nuolet kytkevät ne päälle tai pois.",
  "Off": "Pois",
- "Off in {n} min": "Sammuu {n} min kuluttua",
+ "Off in {time}": "Sammuu {time} kuluttua",
  "Okko button": "Okko-painike",
  "On": "Päällä",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Fire TV:ssä Koti-painike kuuluu Amazonin aloitusnäytölle. Täällä Free My TV pysyy sovelluksena: avaa se sovelluksistasi.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} h sitten",
  "{n} min": "{n} min",
  "{n} min ago": "{n} min sitten",
- "{n} min left": "{n} min jäljellä",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} jäljellä",
  "← → to move · OK to drop · Back to cancel": "← → siirrä · OK pudota · Takaisin peruuta"
 }

@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK sceglie, Indietro annulla.",
  "OK removes them; the arrows turn them on or off.": "OK le rimuove; le frecce le attivano o disattivano.",
  "Off": "Disattivo",
- "Off in {n} min": "Si spegne tra {n} min",
+ "Off in {time}": "Si spegne tra {time}",
  "Okko button": "Tasto Okko",
  "On": "Attivo",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Su Fire TV il tasto Home appartiene alla schermata Home di Amazon. Qui Free My TV resta un'app: aprila dalle tue app.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} h fa",
  "{n} min": "{n} min",
  "{n} min ago": "{n} min fa",
- "{n} min left": "mancano {n} min",
  "{n} ms": "{n} ms",
+ "{time} left": "mancano {time}",
  "← → to move · OK to drop · Back to cancel": "← → sposta · OK rilascia · Indietro annulla"
 }

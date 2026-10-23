@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK wählt aus, Zurück bricht ab.",
  "OK removes them; the arrows turn them on or off.": "OK entfernt sie; die Pfeile schalten sie ein oder aus.",
  "Off": "Aus",
- "Off in {n} min": "Aus in {n} Min.",
+ "Off in {time}": "Aus in {time}",
  "Okko button": "Okko-Taste",
  "On": "An",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Auf Fire TV gehört die Home-Taste zum Startbildschirm von Amazon. Free My TV bleibt hier eine App: Öffne es über deine Apps.",
@@ -228,7 +228,7 @@
  "{n} h ago": "vor {n} Std.",
  "{n} min": "{n} Min.",
  "{n} min ago": "vor {n} Min.",
- "{n} min left": "noch {n} Min.",
  "{n} ms": "{n} ms",
+ "{time} left": "noch {time}",
  "← → to move · OK to drop · Back to cancel": "← → verschieben · OK ablegen · Zurück abbrechen"
 }

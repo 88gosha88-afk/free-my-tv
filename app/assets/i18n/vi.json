@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK để chọn, Quay lại để hủy.",
  "OK removes them; the arrows turn them on or off.": "OK để xóa; phím mũi tên để bật hoặc tắt.",
  "Off": "Tắt",
- "Off in {n} min": "Tắt sau {n} phút",
+ "Off in {time}": "Tắt sau {time}",
  "Okko button": "Nút Okko",
  "On": "Bật",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Trên Fire TV, nút Màn hình chính thuộc về màn hình chính của Amazon. Ở đây Free My TV vẫn là một ứng dụng: hãy mở nó từ danh sách ứng dụng.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} giờ trước",
  "{n} min": "{n} phút",
  "{n} min ago": "{n} phút trước",
- "{n} min left": "còn {n} phút",
  "{n} ms": "{n} ms",
+ "{time} left": "còn {time}",
  "← → to move · OK to drop · Back to cancel": "← → di chuyển · OK đặt · Quay lại hủy"
 }

@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OKで選択、戻るでキャンセル。",
  "OK removes them; the arrows turn them on or off.": "OKで削除、矢印でオン/オフします。",
  "Off": "オフ",
- "Off in {n} min": "{n}分後にオフ",
+ "Off in {time}": "{time}後にオフ",
  "Okko button": "Okkoボタン",
  "On": "オン",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Fire TVではホームボタンはAmazonのホーム画面のものです。ここではFree My TVはアプリのままです。アプリ一覧から開いてください。",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n}時間前",
  "{n} min": "{n}分",
  "{n} min ago": "{n}分前",
- "{n} min left": "残り{n}分",
  "{n} ms": "{n} ms",
+ "{time} left": "残り{time}",
  "← → to move · OK to drop · Back to cancel": "← → 移動 · OK 配置 · 戻る キャンセル"
 }

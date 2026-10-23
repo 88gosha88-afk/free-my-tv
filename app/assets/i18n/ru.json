@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK — выбрать, «Назад» — отменить.",
  "OK removes them; the arrows turn them on or off.": "OK удаляет их; стрелки включают или выключают.",
  "Off": "Выкл.",
- "Off in {n} min": "Выключится через {n} мин",
+ "Off in {time}": "Выключится через {time}",
  "Okko button": "Кнопка Okko",
  "On": "Вкл.",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "На Fire TV кнопка «Домой» принадлежит главному экрану Amazon. Здесь Free My TV остаётся приложением: открывайте его из списка приложений.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} ч назад",
  "{n} min": "{n} мин",
  "{n} min ago": "{n} мин назад",
- "{n} min left": "осталось {n} мин",
  "{n} ms": "{n} мс",
+ "{time} left": "осталось {time}",
  "← → to move · OK to drop · Back to cancel": "← → — переместить · OK — оставить · Назад — отмена"
 }

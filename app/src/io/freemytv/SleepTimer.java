@@ -50,17 +50,27 @@ final class SleepTimer {
      * process keeps the settings it read when it started, and writing would bring old ones back.
      */
     static void stop(Context c) {
+        cancel(c);
+        c.stopService(new Intent(c, SleepOverlay.class));
+    }
+
+    private static void cancel(Context c) {
         PendingIntent old = alarm(c, 0, PendingIntent.FLAG_NO_CREATE);
         if (old != null) {
             c.getSystemService(AlarmManager.class).cancel(old);
             old.cancel();
         }
-        c.stopService(new Intent(c, SleepOverlay.class));
     }
 
-    /** Starts the timer for `minutes` from now; 0 stops it (Settings, in :home). */
+    /** 45 min, 1 h, 1 h 30 min: the timer's times, in the list and as they run down. */
+    static String duration(int minutes) {
+        return minutes < 60 ? Ui.trf("{n} min", "n", minutes) : minutes % 60 == 0 ? Ui.trf("{n} h", "n", minutes / 60)
+                : Ui.trf("{h} h {m} min", "h", minutes / 60, "m", minutes % 60);
+    }
+
+    /** Starts the timer for `minutes` from now; 0 stops it (Settings, in :home). The pill follows (SleepOverlay.update). */
     static void set(Context c, int minutes) {
-        stop(c);
+        cancel(c);
         Prefs.setSleepAt(minutes == 0 ? 0 : System.currentTimeMillis() + minutes * 60_000L);
         if (minutes > 0) {
             AlarmManager am = c.getSystemService(AlarmManager.class);

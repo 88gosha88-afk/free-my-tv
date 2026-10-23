@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK alege, Înapoi anulează.",
  "OK removes them; the arrows turn them on or off.": "OK le elimină; săgețile le activează sau dezactivează.",
  "Off": "Dezactivat",
- "Off in {n} min": "Se oprește în {n} min",
+ "Off in {time}": "Se oprește în {time}",
  "Okko button": "Butonul Okko",
  "On": "Activat",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Pe Fire TV butonul Acasă aparține ecranului de pornire Amazon. Aici Free My TV rămâne o aplicație: deschide-o din aplicațiile tale.",
@@ -228,7 +228,7 @@
  "{n} h ago": "acum {n} h",
  "{n} min": "{n} min",
  "{n} min ago": "acum {n} min",
- "{n} min left": "mai sunt {n} min",
  "{n} ms": "{n} ms",
+ "{time} left": "mai sunt {time}",
  "← → to move · OK to drop · Back to cancel": "← → mută · OK plasează · Înapoi anulează"
 }

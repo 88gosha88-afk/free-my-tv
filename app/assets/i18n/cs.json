@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK vybere, Zpět zruší.",
  "OK removes them; the arrows turn them on or off.": "OK je odstraní; šipky je zapínají a vypínají.",
  "Off": "Vypnuto",
- "Off in {n} min": "Vypne se za {n} min",
+ "Off in {time}": "Vypne se za {time}",
  "Okko button": "Tlačítko Okko",
  "On": "Zapnuto",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Na Fire TV patří tlačítko Domů ploše Amazonu. Free My TV tu zůstává aplikací: otevřete ji ze svých aplikací.",
@@ -228,7 +228,7 @@
  "{n} h ago": "před {n} h",
  "{n} min": "{n} min",
  "{n} min ago": "před {n} min",
- "{n} min left": "zbývá {n} min",
  "{n} ms": "{n} ms",
+ "{time} left": "zbývá {time}",
  "← → to move · OK to drop · Back to cancel": "← → přesunout · OK umístit · Zpět zrušit"
 }

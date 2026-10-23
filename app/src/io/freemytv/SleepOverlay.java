@@ -89,7 +89,7 @@ public class SleepOverlay extends Service {
                 stopSelf();
                 return;
             }
-            view.setText(Ui.trf("Off in {n} min", "n", (int) ((endsAt - now + 59_999) / 60_000)));
+            view.setText(Ui.trf("Off in {time}", "time", SleepTimer.duration((int) ((endsAt - now + 59_999) / 60_000))));
             // The home screen's glass: white with dark ink by day, smoked with light ink at night (Settings > Theme).
             boolean night = HomeData.isNight(theme, now, sunrise, sunset);
             int ink = night ? 0xEBFFFFFF : 0xFF1D1D1F;
@@ -102,6 +102,7 @@ public class SleepOverlay extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
+        Ui.init(this);   // its own process: the app's font isn't loaded here yet
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel("sleep", Ui.tr("Sleep Timer"), NotificationManager.IMPORTANCE_MIN));
         startForeground(1, new Notification.Builder(this, "sleep").setSmallIcon(R.drawable.icon)

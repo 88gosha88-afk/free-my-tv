@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK से चुनें, Back से रद्द करें।",
  "OK removes them; the arrows turn them on or off.": "OK से हटाएँ; तीर उन्हें चालू या बंद करते हैं।",
  "Off": "बंद",
- "Off in {n} min": "{n} मिनट में बंद",
+ "Off in {time}": "{time} में बंद",
  "Okko button": "Okko बटन",
  "On": "चालू",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Fire TV पर होम बटन Amazon की होम स्क्रीन का है। यहाँ Free My TV एक ऐप ही रहेगा: इसे अपने ऐप्स से खोलें।",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} घं पहले",
  "{n} min": "{n} मिनट",
  "{n} min ago": "{n} मि पहले",
- "{n} min left": "{n} मिनट बाकी",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} बाकी",
  "← → to move · OK to drop · Back to cancel": "← → खिसकाएँ · OK छोड़ें · वापस रद्द करें"
 }

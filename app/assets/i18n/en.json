@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK picks, Back cancels.",
  "OK removes them; the arrows turn them on or off.": "OK removes them; the arrows turn them on or off.",
  "Off": "Off",
- "Off in {n} min": "Off in {n} min",
+ "Off in {time}": "Off in {time}",
  "Okko button": "Okko button",
  "On": "On",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} h ago",
  "{n} min": "{n} min",
  "{n} min ago": "{n} min ago",
- "{n} min left": "{n} min left",
  "{n} ms": "{n} ms",
+ "{time} left": "{time} left",
  "← → to move · OK to drop · Back to cancel": "← → to move · OK to drop · Back to cancel"
 }

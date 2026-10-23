@@ -90,7 +90,7 @@
  "OK picks, Back cancels.": "OK kiest, Terug annuleert.",
  "OK removes them; the arrows turn them on or off.": "OK verwijdert ze; de pijlen zetten ze aan of uit.",
  "Off": "Uit",
- "Off in {n} min": "Uit over {n} min",
+ "Off in {time}": "Uit over {time}",
  "Okko button": "Okko-knop",
  "On": "Aan",
  "On Fire TV the Home button belongs to Amazon's home screen. Free My TV stays an app here: open it from your apps.": "Op Fire TV hoort de Home-knop bij het startscherm van Amazon. Hier blijft Free My TV een app: open het via je apps.",
@@ -228,7 +228,7 @@
  "{n} h ago": "{n} u geleden",
  "{n} min": "{n} min",
  "{n} min ago": "{n} min geleden",
- "{n} min left": "nog {n} min",
  "{n} ms": "{n} ms",
+ "{time} left": "nog {time}",
  "← → to move · OK to drop · Back to cancel": "← → verplaatsen · OK neerzetten · Terug annuleren"
 }

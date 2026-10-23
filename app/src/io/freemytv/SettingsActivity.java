@@ -169,6 +169,7 @@ public class SettingsActivity extends Activity {
         private Toast whyToast;   // why the focused option is unavailable
         private String[] whyRows;  // each row's reason, worked out once per screen (null: again on the next frame)
         private int whyScreen = -1, whyScroll = -1;
+        private int sleepLeft;     // the sleep timer's minutes left, read with the state, not on every frame
         private String errorShown;
         private final Spoken spoken;
         private long startedAt, lastNanos, pendingAt, lastSky;
@@ -181,6 +182,7 @@ public class SettingsActivity extends Activity {
             @Override public void run() {
                 if (!running) return;
                 state = HomeMode.state(getContext());
+                sleepLeft = SleepTimer.minutesLeft(getContext());
                 hasKey = Recs.hasKey(getContext());
                 recs = Recs.status(getContext());
                 boolean nowBusy = !busyText().isEmpty();
@@ -638,6 +640,7 @@ public class SettingsActivity extends Activity {
                         invalidate();
                     } else if (down && (screen == HOME_SETTINGS || screen == REMOTE_KEYS || screen == POWER)) {
                         adjust(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        whyRows = null;   // a value changed: what other rows need may have too
                         invalidate();
                     }
                     return true;
@@ -647,7 +650,10 @@ public class SettingsActivity extends Activity {
                     if (down) {
                         if (e.getRepeatCount() == 0) okDown = true;
                     } else {
-                        if (okDown && !e.isCanceled() && spoken.keyClick()) activate();
+                        if (okDown && !e.isCanceled() && spoken.keyClick()) {
+                            activate();
+                            whyRows = null;   // the same after OK
+                        }
                         okDown = false;
                     }
                     return true;
@@ -825,10 +831,9 @@ public class SettingsActivity extends Activity {
         private String[] powerValues() {
             int[] rows = powerRows();
             String[] out = new String[rows.length];
-            int left = SleepTimer.minutesLeft(getContext());
             for (int i = 0; i < rows.length; i++) {
                 switch (rows[i]) {
-                    case P_SLEEP: out[i] = left == 0 ? Ui.tr("Off") : Ui.trf("{n} min left", "n", left); break;
+                    case P_SLEEP: out[i] = sleepLeft == 0 ? Ui.tr("Off") : Ui.trf("{time} left", "time", SleepTimer.duration(sleepLeft)); break;
                     case P_SHOW: out[i] = onOff(Prefs.sleepShown()); break;
                     default: out[i] = SleepOverlay.placeName(Prefs.sleepPlace());
                 }
@@ -844,8 +849,7 @@ public class SettingsActivity extends Activity {
                 case P_SLEEP:
                     list.add(new String[] {"0", Ui.tr("Off")});
                     for (int m : new int[] {5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240}) {
-                        list.add(new String[] {String.valueOf(m), m < 60 ? Ui.trf("{n} min", "n", m)
-                                : m % 60 == 0 ? Ui.trf("{n} h", "n", m / 60) : Ui.trf("{h} h {m} min", "h", m / 60, "m", m % 60)});
+                        list.add(new String[] {String.valueOf(m), SleepTimer.duration(m)});
                     }
                     int left = SleepTimer.minutesLeft(c);
                     openChoices(PICK_SLEEP, list, String.valueOf(left));
@@ -873,6 +877,7 @@ public class SettingsActivity extends Activity {
             int row = pickFor == PICK_SLEEP ? P_SLEEP : P_WHERE;
             if (pickFor == PICK_SLEEP) {
                 SleepTimer.set(c, Integer.parseInt(choice[0]));
+                sleepLeft = SleepTimer.minutesLeft(c);
             } else {
                 Prefs.setSleepPlace(Integer.parseInt(choice[0]));
                 SleepOverlay.update(c);
@@ -940,12 +945,12 @@ public class SettingsActivity extends Activity {
 
         /** Changes the focused row's value one step (OK and → go forward, ← goes back). */
         private void adjust(int dir) {
-            whyRows = null;   // a value changed: what other rows need may have too
             if (unavailable(focus) != null) return;
             if (screen == POWER) {
                 int row = powerRow();
                 if (row == P_SLEEP) {
                     SleepTimer.step(getContext(), dir);
+                    sleepLeft = SleepTimer.minutesLeft(getContext());
                 } else if (row == P_SHOW) {
                     Prefs.setSleepShown(!Prefs.sleepShown());
                     SleepOverlay.update(getContext());
@@ -1271,7 +1276,6 @@ public class SettingsActivity extends Activity {
         }
 
         private void activate() {
-            whyRows = null;
             Context c = getContext();
             if (tellWhy()) return;
             if (screen == HOME_CHOICE) {
