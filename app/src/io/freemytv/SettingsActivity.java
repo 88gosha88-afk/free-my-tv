@@ -71,13 +71,6 @@ public class SettingsActivity extends Activity {
         setIntent(intent);
     }
 
-    @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
-        super.onRequestPermissionsResult(code, permissions, results);
-        if (code == PHOTOS_PERMISSION) view.photosAllowed(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
-    }
-
-    private static final int PHOTOS_PERMISSION = 1;
-
     @Override protected void onPause() {
         closePreview();     // before pausing the view: closing the preview resumes it (view.resume)
         view.pause();
@@ -287,6 +280,7 @@ public class SettingsActivity extends Activity {
             handler.post(poll);
             Choreographer.getInstance().postFrameCallback(this);
             spoken.readAgain();
+            Photos.importInbox(getContext(), this::invalidate);   // photos a computer just sent
         }
 
         void pause() {
@@ -686,7 +680,7 @@ public class SettingsActivity extends Activity {
             String theme = Prefs.theme();
             v[2] = theme.equals("light") ? Ui.tr("Light") : theme.equals("dark") ? Ui.tr("Dark") : Ui.tr("Automatic");
             int photos = Photos.files(getContext()).size();
-            v[PHOTOS_ROW] = !photoStatus.isEmpty() ? photoStatus : photos == 0 ? Ui.tr("None")
+            v[PHOTOS_ROW] = photos == 0 ? Ui.tr("None")
                     : Prefs.photos() ? Ui.plural("plural|one:{n} photo|other:{n} photos", photos) : Ui.tr("Off");
             v[4] = onOff(Prefs.sounds());
             v[5] = onOff(Prefs.weather());
@@ -770,7 +764,7 @@ public class SettingsActivity extends Activity {
                     break;
                 }
                 case PHOTOS_ROW:
-                    if (Photos.files(getContext()).isEmpty() || importing) return;
+                    if (Photos.files(getContext()).isEmpty()) return;
                     Prefs.setPhotos(!Prefs.photos());
                     return;
                 case 4: Prefs.setSounds(!Prefs.sounds()); break;
@@ -805,62 +799,22 @@ public class SettingsActivity extends Activity {
             dialog.show();
         }
 
-        // MARK: - My Photos (from a USB stick)
+        // MARK: - My Photos (sent from a computer: tools/photos.py)
 
-        private String photoStatus = "";
-        private boolean importing;
-
-        /** OK on My Photos: asks once to read the stick, then copies its photos in the background. */
-        private void importPhotos() {
-            if (importing) return;
-            Context c = getContext();
-            if (!Photos.allowed(c)) {
-                activity.requestPermissions(new String[] {Photos.PERMISSION}, PHOTOS_PERMISSION);
-                return;
-            }
-            if (Photos.sticks(c).isEmpty()) {
-                showPhotoStatus(Ui.tr("No USB stick found."));
-                return;
-            }
-            importing = true;
-            photoStatus = Ui.tr("Looking for photos…");
-            new Thread(() -> {
-                String message;
-                try {
-                    int n = Photos.importAll(c, (done, total) -> handler.post(() -> {
-                        photoStatus = Ui.trf("Importing… {done} of {total}", "done", done, "total", total);
+        /** OK on My Photos: asks, then deletes them all. */
+        private void askRemovePhotos() {
+            int n = Photos.files(getContext()).size();
+            if (n == 0) return;
+            AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    .setTitle(Ui.plural("plural|one:Remove {n} photo?|other:Remove {n} photos?", n))
+                    .setPositiveButton(Ui.tr("Remove"), (d, which) -> {
+                        Photos.removeAll(getContext());
                         invalidate();
-                    }));
-                    message = n == 0 ? Ui.tr("No photos on the USB stick.")
-                            : Ui.plural("plural|one:{n} photo imported|other:{n} photos imported", n);
-                } catch (Exception e) {
-                    AppLog.w("photos: import failed: " + e.getMessage());
-                    message = Ui.trf("Couldn't import: {error}", "error", e.getMessage());
-                }
-                String result = message;
-                handler.post(() -> {
-                    importing = false;
-                    showPhotoStatus(result);
-                    spoken.focusMoved();
-                });
-            }).start();
-        }
-
-        /** The answer to "read your photos?": on yes, the import starts. */
-        void photosAllowed(boolean yes) {
-            if (yes) importPhotos();
-            else showPhotoStatus(Ui.tr("Free My TV needs permission to read the photos."));
-            invalidate();
-        }
-
-        private void showPhotoStatus(String message) {
-            photoStatus = message;
-            invalidate();
-            handler.postDelayed(() -> {
-                if (importing || !photoStatus.equals(message)) return;
-                photoStatus = "";
-                invalidate();
-            }, 4000);
+                        spoken.focusMoved();
+                    })
+                    .setNegativeButton(Ui.tr("Cancel"), null)
+                    .show();
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();   // one stray OK keeps them
         }
 
         private void searchCity(String name) {
@@ -1058,7 +1012,9 @@ public class SettingsActivity extends Activity {
             }
             Paint hint = Ui.text(Ui.regular, 23 * k, 0x8CFFFFFF);
             float hy = (LIST_TOP + 20 + labels.length * pitch + 36) * k;
-            c.drawText(!keys && focus == PHOTOS_ROW ? Ui.tr("OK imports from the USB stick; the arrows turn them on or off.")
+            c.drawText(!keys && focus == PHOTOS_ROW ? (Photos.files(getContext()).isEmpty()
+                    ? Ui.tr("Send them from a computer: see “Your own photos” in the README.")
+                    : Ui.tr("OK removes them; the arrows turn them on or off."))
                     : Ui.tr("OK or the arrows change the value."), LIST_X * k + 30 * k, hy, hint);
             if (keys) {
                 c.drawText(RemoteKeys.VESTEL ? Ui.tr("YouTube, Prime Video and Google Play: the TV itself controls those buttons.")
@@ -1108,8 +1064,7 @@ public class SettingsActivity extends Activity {
                 askCity();
                 return;
             } else if (screen == HOME_SETTINGS && focus == PHOTOS_ROW) {
-                importPhotos();
-                invalidate();
+                askRemovePhotos();
                 return;
             } else if (screen == HOME_SETTINGS) {
                 adjust(1);

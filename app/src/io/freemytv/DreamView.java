@@ -175,6 +175,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         data.refreshIfStale();
         recs.refreshIfStale();
         recs.prefetchAll();
+        Photos.importInbox(getContext(), () -> { if (running) prepareNext(); });
         prepareNext();
         handler.postDelayed(tick, 60_000);
         Choreographer.getInstance().postFrameCallback(this);

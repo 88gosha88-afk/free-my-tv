@@ -1,65 +1,51 @@
 package io.freemytv;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.storage.StorageManager;
-import android.os.storage.StorageVolume;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Your own photos, imported from a USB stick (Home Settings → My Photos). They are copied into the app at the
- * screensaver's size (cropped to 16:9, turned upright), so the stick can come out afterwards and the TV never decodes
- * a 12-megapixel original. While they are on, the screensaver shows them instead of the picks' photos, and the home
- * screen's background is one of them (a new one every hour), blurred like the picks' are.
+ * Your own photos. A computer puts them in the app's external files folder (tools/photos.py: adb push to
+ * Android/data/io.freemytv/files/photos, no permission needed); the next time the home screen, the screensaver or the
+ * settings open, each one is imported once into the app's private folder, turned upright (EXIF), cropped to 16:9 and
+ * re-encoded at the screensaver's size (which also drops its GPS and other tags), and the original is deleted. While
+ * they are on (Home Settings > My Photos), the screensaver shows them instead of the picks' photos, in the order they
+ * came, and without picks (no TMDB key) one of them is the home screen's background, a new one every hour.
  */
 final class Photos {
     private Photos() {}
 
     /** The screensaver's photo size (DreamView loads them 10% larger than the screen, for the slow zoom). */
     static final int W = 2112, H = 1188;
-    /** At most this many (about 300 KB each): a stick with thousands gives an even sample of them. */
+    /** At most this many (about 300 KB each); later ones wait in the folder until some are removed. */
     static final int MAX = 100;
     /** Smaller ones are icons and thumbnails, not photos. */
     private static final int MIN_SIDE = 640;
-    private static final int DEPTH = 6;
-    private static final Set<String> SKIP = new java.util.HashSet<>(Arrays.asList(
-            "android", "lost.dir", "system volume information", "$recycle.bin", "thumbnails"));
-
-    /** Reading the stick: READ_MEDIA_IMAGES from Android 13, READ_EXTERNAL_STORAGE before. */
-    static final String PERMISSION = Build.VERSION.SDK_INT >= 33
-            ? "android.permission.READ_MEDIA_IMAGES" : "android.permission.READ_EXTERNAL_STORAGE";
-
-    interface Progress { void step(int done, int total); }
-
-    static boolean allowed(Context c) {
-        return c.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED;
-    }
 
     private static File dir(Context c) {
         return new File(c.getFilesDir(), "photos");
+    }
+
+    /** Where tools/photos.py puts them (the app's own external folder: adb can write there, and no permission). */
+    private static File inbox(Context c) {
+        return c.getExternalFilesDir("photos");
     }
 
     // MARK: - The imported photos
@@ -67,7 +53,7 @@ final class Photos {
     private static long listedStamp = -1;
     private static List<File> listed = new ArrayList<>();
 
-    /** The imported photos, in name order (one stat of the folder while nothing changed). */
+    /** The imported photos, in the order they came (one stat of the folder while nothing changed). */
     static synchronized List<File> files(Context c) {
         File d = dir(c);
         long stamp = d.exists() ? d.lastModified() : 0;
@@ -87,7 +73,7 @@ final class Photos {
         return Prefs.photos() && !files(c).isEmpty();
     }
 
-    /** For the screensaver: the photos as picks (no title, no caption), shuffled differently each day. */
+    /** For the screensaver: the photos as picks (no title, no caption). */
     static List<Recs.Pick> picks(Context c) {
         List<Recs.Pick> out = new ArrayList<>();
         if (!on(c)) return out;
@@ -99,7 +85,6 @@ final class Photos {
             p.photo = list.get(i);
             out.add(p);
         }
-        Collections.shuffle(out, new Random(System.currentTimeMillis() / 86_400_000L));
         return out;
     }
 
@@ -144,107 +129,94 @@ final class Photos {
         return backdrop;
     }
 
-    // MARK: - Importing from the stick
+    // MARK: - Importing what the computer sent
 
-    /** The mounted USB sticks (and SD cards): Android's public removable volumes, under /storage. */
-    static List<File> sticks(Context c) {
-        Set<File> out = new LinkedHashSet<>();
-        if (Build.VERSION.SDK_INT >= 30) {
-            StorageManager sm = (StorageManager) c.getSystemService(Context.STORAGE_SERVICE);
-            if (sm != null) {
-                for (StorageVolume v : sm.getStorageVolumes()) {
-                    if (v.isRemovable() && Environment.MEDIA_MOUNTED.equals(v.getState()) && v.getDirectory() != null) {
-                        out.add(v.getDirectory());
-                    }
-                }
-            }
-        }
-        File[] all = new File("/storage").listFiles();
-        if (all != null) {
-            for (File f : all) {
-                if (f.isDirectory() && !f.getName().equals("emulated") && !f.getName().equals("self")) out.add(f);
-            }
-        }
-        return new ArrayList<>(out);
-    }
+    private static boolean importing;
+    private static final List<Runnable> waiting = new ArrayList<>();
 
     /**
-     * Replaces the imported photos with the ones on the stick(s). Runs in the background; returns how many were
-     * imported (0: none found, and the previous ones stay).
+     * Imports what tools/photos.py put in the inbox, in the background, one photo at a time; `done` runs (on the main
+     * thread) when something was imported, also when an import already under way (asked by another screen) brings it.
+     * Cheap when the inbox is empty: one directory listing.
      */
-    static int importAll(Context c, Progress progress) throws IOException {
-        List<File> found = new ArrayList<>();
-        for (File root : sticks(c)) find(root, found);
-        Collections.sort(found);
-        AppLog.w("photos: " + found.size() + " images on " + sticks(c));
-        if (found.size() > MAX) {
-            List<File> sample = new ArrayList<>();
-            for (int i = 0; i < MAX; i++) sample.add(found.get(i * found.size() / MAX));
-            found = sample;
+    static void importInbox(Context c, Runnable done) {
+        Context app = c.getApplicationContext();
+        synchronized (Photos.class) {
+            if (done != null) waiting.add(done);
+            if (importing) return;
+            importing = true;
         }
-        if (found.isEmpty()) return 0;
-        File next = new File(c.getFilesDir(), "photos.new");
-        clear(next);
-        if (!next.mkdirs()) throw new IOException("can't write " + next);
-        int count = 0;
-        for (int i = 0; i < found.size(); i++) {
-            progress.step(i, found.size());
-            File src = found.get(i);
+        worker.execute(() -> {
+            int n = 0;
             try {
-                Bitmap b = decode(src, W, H);
-                if (b == null) continue;
-                try (OutputStream out = new FileOutputStream(new File(next, String.format(Locale.US, "%03d.jpg", count)))) {
-                    b.compress(Bitmap.CompressFormat.JPEG, 86, out);
-                }
-                b.recycle();
-                count++;
-            } catch (IOException | RuntimeException | OutOfMemoryError e) {
-                AppLog.w("photos: skipped " + src.getName() + ": " + e.getMessage());
+                n = importNow(app);
+            } catch (RuntimeException e) {
+                AppLog.w("photos: import failed: " + e.getMessage());
             }
-        }
-        progress.step(found.size(), found.size());
-        if (count == 0) {
-            clear(next);
+            List<Runnable> tell;
+            synchronized (Photos.class) {
+                importing = false;
+                tell = new ArrayList<>(waiting);
+                waiting.clear();
+            }
+            if (n > 0) main.post(() -> { for (Runnable r : tell) r.run(); });
+        });
+    }
+
+    private static int importNow(Context c) {
+        File in = inbox(c);
+        File[] all = in == null ? null : in.listFiles();
+        if (all == null || all.length == 0) return 0;
+        Arrays.sort(all);
+        File d = dir(c);
+        if (!d.isDirectory() && !d.mkdirs()) {
+            AppLog.w("photos: can't create " + d);
             return 0;
         }
-        File d = dir(c);
-        clear(d);
-        if (!next.renameTo(d)) throw new IOException("can't replace " + d);
-        Prefs.setPhotos(true);
+        int have = files(c).size(), count = 0;
+        for (File src : all) {
+            if (!src.isFile()) continue;
+            if (!image(src.getName().toLowerCase(Locale.ROOT))) {
+                src.delete();
+                continue;
+            }
+            if (have + count >= MAX) {
+                AppLog.w("photos: " + MAX + " already, " + src.getName() + " waits");
+                continue;
+            }
+            // Named by import time: the order they came is the order the screensaver shows them.
+            File out = new File(d, String.format(Locale.US, "%013d.jpg", System.currentTimeMillis() + count));
+            try {
+                Bitmap b = decode(src, W, H);
+                if (b == null) {
+                    AppLog.w("photos: skipped " + src.getName() + " (too small or unreadable)");
+                } else {
+                    try (OutputStream os = new FileOutputStream(out)) {
+                        b.compress(Bitmap.CompressFormat.JPEG, 86, os);
+                    }
+                    b.recycle();
+                    count++;
+                }
+            } catch (IOException | RuntimeException | OutOfMemoryError e) {
+                out.delete();
+                AppLog.w("photos: skipped " + src.getName() + ": " + e.getMessage());
+            }
+            src.delete();
+        }
+        AppLog.w("photos: imported " + count + ", " + (have + count) + " in all");
+        if (count > 0) Prefs.setPhotos(true);   // new photos show, even if they had been turned off
         return count;
     }
 
-    /** Deletes the imported photos. */
+    /** Deletes the imported photos (and whatever is still waiting to be imported). */
     static void removeAll(Context c) {
         clear(dir(c));
+        File in = inbox(c);
+        File[] queued = in == null ? null : in.listFiles();
+        if (queued != null) for (File f : queued) f.delete();
         synchronized (Photos.class) {
             backdrop = null;
             built = null;
-        }
-    }
-
-    /** Images under `root`, skipping hidden and system folders, a few levels deep (DCIM/Camera/2024/… fits). */
-    private static void find(File root, List<File> out) {
-        ArrayDeque<File[]> queue = new ArrayDeque<>();
-        queue.add(new File[] {root});
-        int depth = 0;
-        while (!queue.isEmpty() && depth <= DEPTH && out.size() < MAX * 50) {
-            int n = queue.size();
-            for (int q = 0; q < n; q++) {
-                for (File d : queue.poll()) {
-                    File[] all = d.listFiles();
-                    if (all == null) continue;
-                    List<File> dirs = new ArrayList<>();
-                    for (File f : all) {
-                        String name = f.getName().toLowerCase(Locale.ROOT);
-                        if (name.startsWith(".") || SKIP.contains(name)) continue;
-                        if (f.isDirectory()) dirs.add(f);
-                        else if (image(name)) out.add(f);
-                    }
-                    if (!dirs.isEmpty()) queue.add(dirs.toArray(new File[0]));
-                }
-            }
-            depth++;
         }
     }
 
@@ -253,7 +225,12 @@ final class Photos {
                 || (Build.VERSION.SDK_INT >= 28 && (name.endsWith(".heic") || name.endsWith(".heif")));
     }
 
-    /** The photo upright (EXIF), its center cropped to w:h and filtered down to w × h; null if too small or unreadable. */
+    /**
+     * The photo upright (EXIF), its center cropped to w:h and filtered down to w × h; null if too small or unreadable.
+     * It is decoded subsampled to about the UI's size (a 12 MP photo: 2000 × 1500, 12 MB, not 48), then drawn straight
+     * into the w × h result (cropped and scaled in one step) and only that is turned: at most the decoded photo and
+     * one or two 10 MB bitmaps at a time.
+     */
     private static Bitmap decode(File f, int w, int h) throws IOException {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
@@ -262,34 +239,31 @@ final class Photos {
         if (Math.min(bounds.outWidth, bounds.outHeight) < MIN_SIDE) return null;
         int degrees = rotation(f);
         boolean sideways = degrees == 90 || degrees == 270;
-        int sw = sideways ? bounds.outHeight : bounds.outWidth, sh = sideways ? bounds.outWidth : bounds.outHeight;
+        // Everything below is in the photo's stored orientation: a sideways one is cropped and sized as h × w.
+        int tw = sideways ? h : w, th = sideways ? w : h;
+        float ratio = (float) tw / th;
+        int cw = Math.min(bounds.outWidth, Math.round(bounds.outHeight * ratio));
+        int ch = Math.min(bounds.outHeight, Math.round(cw / ratio));
         // Only what the crop keeps decides the sample size: a portrait photo is cut to its middle band.
-        float ratio = (float) w / h;
-        int cw = Math.min(sw, Math.round(sh * ratio)), ch = Math.min(sh, Math.round(cw / ratio));
+        int keep = Math.round(Backdrop.W * 0.75f);
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inSampleSize = 1;
-        while (cw / (opts.inSampleSize * 2) >= w && ch / (opts.inSampleSize * 2) >= h) opts.inSampleSize *= 2;
+        while (Math.max(cw, ch) / (opts.inSampleSize * 2) >= keep) opts.inSampleSize *= 2;
         Bitmap src = BitmapFactory.decodeFile(f.getPath(), opts);
         if (src == null) return null;
-        if (degrees != 0) {
-            Matrix m = new Matrix();
-            m.setRotate(degrees);
-            Bitmap turned = Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), m, true);
-            if (turned != src) src.recycle();
-            src = turned;
-        }
-        cw = Math.min(src.getWidth(), Math.round(src.getHeight() * ratio));
-        ch = Math.min(src.getHeight(), Math.round(cw / ratio));
-        Bitmap b = Bitmap.createBitmap(src, (src.getWidth() - cw) / 2, (src.getHeight() - ch) / 2, cw, ch);
-        if (b != src) src.recycle();
-        while (b.getWidth() / 2 >= w) {
-            Bitmap half = Bitmap.createScaledBitmap(b, b.getWidth() / 2, b.getHeight() / 2, true);
-            b.recycle();
-            b = half;
-        }
-        Bitmap out = b.getWidth() == w && b.getHeight() == h ? b : Bitmap.createScaledBitmap(b, w, h, true);
-        if (out != b) b.recycle();
-        return out;
+        float sx = (float) src.getWidth() / bounds.outWidth, sy = (float) src.getHeight() / bounds.outHeight;
+        float cx = cw * sx, cy = ch * sy, left = (src.getWidth() - cx) / 2, top = (src.getHeight() - cy) / 2;
+        Bitmap out = Bitmap.createBitmap(tw, th, Bitmap.Config.ARGB_8888);
+        new android.graphics.Canvas(out).drawBitmap(src, new android.graphics.Rect(Math.round(left), Math.round(top),
+                Math.round(left + cx), Math.round(top + cy)), new android.graphics.Rect(0, 0, tw, th),
+                new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG | android.graphics.Paint.DITHER_FLAG));
+        src.recycle();
+        if (degrees == 0) return out;
+        Matrix m = new Matrix();
+        m.setRotate(degrees);
+        Bitmap turned = Bitmap.createBitmap(out, 0, 0, tw, th, m, true);
+        if (turned != out) out.recycle();
+        return turned;
     }
 
     private static int rotation(File f) {
