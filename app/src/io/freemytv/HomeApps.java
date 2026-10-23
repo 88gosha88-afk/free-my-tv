@@ -12,10 +12,11 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -66,12 +67,18 @@ final class HomeApps {
         String uri;         // opens this address in the app instead of the app's home (a title's page)
         Intent intent;      // DEVICE: the TV maker's own screen it opens
         String symbol;      // icon for the shortcuts and special cards
-        Bitmap tile;        // 16:9 card (apps and specials)
+        Bitmap tile;        // 16:9 card (apps and specials): set with setTile
+        BitmapShader tileShader;   // the card's, for its rounded corners (made with the card, never while drawing)
         Bitmap logo;        // colored logo with no background (shelf); null = use the card
         Bitmap logoDark;    // version for a light background (YouTube's white icon), if any
         float logoInk;      // fraction of the logo with ink (thin logos are drawn larger, with the same "weight")
         float logoScale = 1; // size tweak by eye (compact logos need more)
         boolean connected = true;
+
+        void setTile(Bitmap b) {
+            tile = b;
+            tileShader = b == null ? null : new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+        }
     }
 
     /**
@@ -165,12 +172,12 @@ final class HomeApps {
                 // An app picked in Settings > Shelf that isn't in SHELF: its own name and TV art.
                 it.key = pkg;
                 it.label = ri != null ? String.valueOf(ri.loadLabel(pm)) : pkg;
-                it.tile = appTile(c, null, pkg, 0);
+                it.setTile(appTile(c, null, pkg, 0));
             } else {
                 it.key = d[0];
                 it.label = d[1];
                 it.logo = shelfLogo(c, d[0], d[2], d[4], extract);
-                if (it.logo == null) it.tile = appTile(c, d[0], d[2], 0xFF000000 | Integer.parseInt(d[3], 16));
+                if (it.logo == null) it.setTile(appTile(c, d[0], d[2], 0xFF000000 | Integer.parseInt(d[3], 16)));
                 if (it.logo != null) it.logoInk = ink(it.logo);
                 it.logoDark = ownLogoCached(c, d[0] + "-dark");
                 it.logoScale = Float.parseFloat(d[5]);
@@ -442,7 +449,7 @@ final class HomeApps {
             it.pkg = pkg;
             it.key = pkg;
             it.label = app[1];
-            it.tile = appTile(c, null, pkg, 0);
+            it.setTile(appTile(c, null, pkg, 0));
             items.add(it);
         }
         Collections.sort(items, (a, b) -> a.label.toLowerCase(Locale.ROOT).compareTo(b.label.toLowerCase(Locale.ROOT)));
@@ -455,7 +462,7 @@ final class HomeApps {
 
     private static Item special(Context c, int kind, String key, String label, String symbol) {
         Item it = shortcut(kind, key, label, symbol);
-        it.tile = symbolTile(c, key, symbol);
+        it.setTile(symbolTile(c, key, symbol));
         return it;
     }
 
@@ -586,7 +593,7 @@ final class HomeApps {
     // MARK: - Colored logos (shelf)
 
     /** Bump when the way logos are lifted changes (the ones saved on disk are redone). */
-    private static final int LOGO_VERSION = 2;
+    private static final int LOGO_VERSION = 3;
 
     private static Bitmap shelfLogo(Context c, String key, String pkg, String mode, boolean extract) {
         synchronized (LOGOS) {
@@ -663,11 +670,14 @@ final class HomeApps {
         Drawable d = bannerDrawable(c, pkg);
         if (d == null) return null;
         final int w = 768, h = 432;
-        Bitmap src = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(src);
+        // The art at its own resolution, then filtered down: the lifting below works at 768×432.
+        float k = detail(d, w, h);
+        Bitmap big = Bitmap.createBitmap(Math.round(w * k), Math.round(h * k), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(big);
         canvas.drawColor(0xFF15161C);
-        d.setBounds(0, 0, w, h);
+        d.setBounds(0, 0, big.getWidth(), big.getHeight());
         d.draw(canvas);
+        Bitmap src = shrink(big, w, h);
         int[] px = new int[w * h];
         src.getPixels(px, 0, w, 0, 0, w, h);
         src.recycle();
@@ -694,25 +704,33 @@ final class HomeApps {
         float[] mean = new float[3];
         for (int i = 0; i < 3; i++) mean[i] = (p00[i] + p10[i] + p01[i] + p11[i] + top[w / 2][i] + bottom[w / 2][i] + left[h / 2][i] + right[h / 2][i]) / 8;
         float bgLum = lum(mean), bgSat = sat(mean);
-        int[] out = new int[w * h];
+        // Distance of each pixel from the background, then the largest one within 2 px: the ink beside an edge pixel.
+        float[] dist = new float[w * h], near = new float[w * h], tmp = new float[w * h];
         float[] bg = new float[3], col = new float[3];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                background(bg, x, y, w, h, top, bottom, left, right);
+                dist[y * w + x] = distance(px[y * w + x], bg);
+            }
+        }
+        maxFilter(dist, tmp, w, h, 2, true);
+        maxFilter(tmp, near, w, h, 2, false);
+        int[] out = new int[w * h];
         int opaque = 0;
         for (int y = 0; y < h; y++) {
-            float v = (float) y / (h - 1);
             for (int x = 0; x < w; x++) {
-                float u = (float) x / (w - 1);
-                for (int i = 0; i < 3; i++) {
-                    bg[i] = (1 - v) * top[x][i] + v * bottom[x][i] + (1 - u) * left[y][i] + u * right[y][i]
-                            - ((1 - u) * (1 - v) * p00[i] + u * (1 - v) * p10[i] + (1 - u) * v * p01[i] + u * v * p11[i]);
-                }
-                int p = px[y * w + x];
+                int idx = y * w + x;
+                // Is there ink here (the old thresholds, on the nearby ink), and how much of this pixel it covers
+                // (its distance against that ink's): solid parts stay opaque, edges keep their anti-aliasing.
+                float gate = smoothstep(0.07f, 0.22f, near[idx]);
+                if (gate <= 0.004f) continue;
+                float a = gate * clamp((dist[idx] - 0.04f) / (0.85f * (near[idx] - 0.04f)));
+                if (a <= 0.004f) continue;
+                background(bg, x, y, w, h, top, bottom, left, right);
+                int p = px[idx];
                 col[0] = ((p >> 16) & 255) / 255f;
                 col[1] = ((p >> 8) & 255) / 255f;
                 col[2] = (p & 255) / 255f;
-                float dist = (float) Math.sqrt(((col[0] - bg[0]) * (col[0] - bg[0]) + (col[1] - bg[1]) * (col[1] - bg[1])
-                        + (col[2] - bg[2]) * (col[2] - bg[2])) / 3);
-                float a = smoothstep(0.07f, 0.22f, dist);
-                if (a <= 0.004f) continue;
                 for (int i = 0; i < 3; i++) col[i] = clamp((col[i] - (1 - a) * bg[i]) / a);   // no background halo
                 float l = lum(col), s = sat(col);
                 if (bgLum > 0.6f && l < 0.42f && s < 0.3f) {
@@ -720,7 +738,7 @@ final class HomeApps {
                 } else if (tint && bgLum <= 0.6f && bgLum > 0.1f && bgSat > 0.35f && l > 0.7f && s < 0.25f) {
                     vivid(bg, col);                                 // white logo on brand color → that color, vivid
                 }
-                out[y * w + x] = (Math.round(a * 255) << 24) | (Math.round(col[0] * 255) << 16) | (Math.round(col[1] * 255) << 8) | Math.round(col[2] * 255);
+                out[idx] = (Math.round(a * 255) << 24) | (Math.round(col[0] * 255) << 16) | (Math.round(col[1] * 255) << 8) | Math.round(col[2] * 255);
                 if (a > 0.5f) opaque++;
             }
         }
@@ -750,6 +768,36 @@ final class HomeApps {
             return pm.getApplicationBanner(pkg);
         } catch (PackageManager.NameNotFoundException | RuntimeException e) {
             return null;
+        }
+    }
+
+    /** The background at (x, y): the patch spanning the four smoothed edge profiles (gradients are fine). */
+    private static void background(float[] bg, int x, int y, int w, int h, float[][] top, float[][] bottom,
+                                   float[][] left, float[][] right) {
+        float u = (float) x / (w - 1), v = (float) y / (h - 1);
+        float[] p00 = top[0], p10 = top[w - 1], p01 = bottom[0], p11 = bottom[w - 1];
+        for (int i = 0; i < 3; i++) {
+            bg[i] = (1 - v) * top[x][i] + v * bottom[x][i] + (1 - u) * left[y][i] + u * right[y][i]
+                    - ((1 - u) * (1 - v) * p00[i] + u * (1 - v) * p10[i] + (1 - u) * v * p01[i] + u * v * p11[i]);
+        }
+    }
+
+    /** Color distance (0 to 1, RMS of the channels) between a pixel and the background. */
+    private static float distance(int p, float[] bg) {
+        float r = ((p >> 16) & 255) / 255f - bg[0], g = ((p >> 8) & 255) / 255f - bg[1], b = (p & 255) / 255f - bg[2];
+        return (float) Math.sqrt((r * r + g * g + b * b) / 3);
+    }
+
+    /** Largest value within r in one direction. */
+    private static void maxFilter(float[] in, float[] out, int w, int h, int r, boolean horizontal) {
+        int n = horizontal ? w : h, lines = horizontal ? h : w, step = horizontal ? 1 : w, lineStep = horizontal ? w : 1;
+        for (int line = 0; line < lines; line++) {
+            int base = line * lineStep;
+            for (int i = 0; i < n; i++) {
+                float m = 0;
+                for (int j = Math.max(0, i - r); j <= Math.min(n - 1, i + r); j++) m = Math.max(m, in[base + j * step]);
+                out[base + i * step] = m;
+            }
         }
     }
 
@@ -894,18 +942,18 @@ final class HomeApps {
         } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {
         }
         if (d == null) return null;
-        Bitmap b = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888);
+        float k = detail(d, TILE_W, TILE_H);
+        int w = Math.round(TILE_W * k), h = Math.round(TILE_H * k);
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(b);
         canvas.drawColor(0xFF15161C);   // banners with transparency sit on a dark background
-        d.setBounds(0, 0, TILE_W, TILE_H);
+        d.setBounds(0, 0, w, h);
         d.draw(canvas);
-        return b;
+        return shrink(b, TILE_W, TILE_H);
     }
 
     /** No banner: the app's icon (in its proper shape, with some margin) on a dark card. */
     private static Bitmap iconTile(Context c, String pkg) {
-        Bitmap b = darkTile();
-        Canvas canvas = new Canvas(b);
         Drawable icon = null;
         try {
             PackageManager pm = c.getPackageManager();
@@ -919,36 +967,67 @@ final class HomeApps {
             if (icon == null) icon = pm.getApplicationIcon(ai);
         } catch (PackageManager.NameNotFoundException ignored) {
         }
-        if (icon == null) return b;
-        int size = Math.round(TILE_H * 0.56f);
-        float left = (TILE_W - size) / 2f, top = (TILE_H - size) / 2f;
-        if (icon instanceof AdaptiveIconDrawable) {
-            // Adaptive icon: the layers clipped to a squircle, like an Apple icon.
+        if (icon == null) return darkTile(TILE_W, TILE_H);
+        boolean adaptive = icon instanceof AdaptiveIconDrawable;
+        // Drawn at the icon's own resolution (the whole tile, so the squircle's edge is smooth too), then filtered down.
+        float drawn = TILE_H * (adaptive ? 0.56f * 1.5f : 0.46f);
+        float k = detail(icon, drawn, drawn);
+        int tw = Math.round(TILE_W * k), th = Math.round(TILE_H * k);
+        Bitmap b = darkTile(tw, th);
+        Canvas canvas = new Canvas(b);
+        int size = Math.round(th * 0.56f);
+        float left = (tw - size) / 2f, top = (th - size) / 2f;
+        if (adaptive) {
+            // Adaptive icon: the layers in a squircle, like an Apple icon. Drawn apart, then filling an anti-aliased
+            // rounded rectangle (clipPath leaves stair-stepped corners).
             AdaptiveIconDrawable a = (AdaptiveIconDrawable) icon;
-            Path clip = new Path();
-            clip.addRoundRect(new RectF(left, top, left + size, top + size), size * 0.2237f, size * 0.2237f, Path.Direction.CW);
-            canvas.save();
-            canvas.clipPath(clip);
+            Bitmap layers = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+            Canvas lc = new Canvas(layers);
             int pad = size / 4;
             for (Drawable layer : new Drawable[] {a.getBackground(), a.getForeground()}) {
                 if (layer == null) continue;
-                layer.setBounds(Math.round(left) - pad, Math.round(top) - pad, Math.round(left) + size + pad, Math.round(top) + size + pad);
-                layer.draw(canvas);
+                layer.setBounds(-pad, -pad, size + pad, size + pad);
+                layer.draw(lc);
             }
-            canvas.restore();
+            int x = Math.round(left), y = Math.round(top);
+            BitmapShader shader = new BitmapShader(layers, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            Matrix m = new Matrix();
+            m.setTranslate(x, y);
+            shader.setLocalMatrix(m);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setShader(shader);
+            canvas.drawRoundRect(x, y, x + size, y + size, size * 0.2237f, size * 0.2237f, p);
         } else {
             // Legacy icon (a free-form drawing with transparency): smaller, no frame.
-            int s = Math.round(TILE_H * 0.46f);
-            icon.setBounds((TILE_W - s) / 2, (TILE_H - s) / 2, (TILE_W + s) / 2, (TILE_H + s) / 2);
+            int s = Math.round(th * 0.46f);
+            icon.setBounds((tw - s) / 2, (th - s) / 2, (tw + s) / 2, (th + s) / 2);
             icon.draw(canvas);
         }
-        return b;
+        return shrink(b, TILE_W, TILE_H);
+    }
+
+    /**
+     * How much bigger than w × h to draw d so it's near its own resolution (vectors: 2×), at most 2×: after an update
+     * every tile is made again, some on the UI thread.
+     */
+    private static float detail(Drawable d, float w, float h) {
+        int iw = d.getIntrinsicWidth(), ih = d.getIntrinsicHeight();
+        float k = iw > 0 && ih > 0 ? Math.max(iw / w, ih / h) : 2f;
+        return Math.max(1f, Math.min(2f, k));
+    }
+
+    /** Filtered down to w × h (Ui.downscale); the big one is recycled. */
+    private static Bitmap shrink(Bitmap big, int w, int h) {
+        Bitmap out = Ui.downscale(big, w, h);
+        if (out != big) big.recycle();
+        return out;
     }
 
     /** Settings and the like: the icon in white on a dark card. */
     private static synchronized Bitmap symbolTile(Context c, String key, String symbol) {
         if (TILES.containsKey(key)) return TILES.get(key);
-        Bitmap b = darkTile();
+        Bitmap b = darkTile(TILE_W, TILE_H);
+        Symbols.warm(c, symbol, TILE_H * 0.36f);
         Symbols.draw(c, new Canvas(b), symbol, TILE_W / 2f, TILE_H / 2f, TILE_H * 0.36f, 0xF2FFFFFF);
         b.setHasMipMap(true);
         TILES.put(key, b);
@@ -957,7 +1036,7 @@ final class HomeApps {
 
     /** The official logo (no background) on dark glass with a faint brand tint coming from below. */
     private static Bitmap logoTile(Bitmap logo, int brand) {
-        Bitmap b = darkTile();
+        Bitmap b = darkTile(TILE_W, TILE_H);
         Canvas canvas = new Canvas(b);
         Paint glow = new Paint();
         glow.setShader(new RadialGradient(TILE_W / 2f, TILE_H * 1.15f, TILE_W * 0.75f, Ui.alpha(brand, 0.38f), 0x00000000, Shader.TileMode.CLAMP));
@@ -965,17 +1044,19 @@ final class HomeApps {
         boolean wide = logo.getWidth() > logo.getHeight() * 1.35f;
         float maxW = TILE_W * (wide ? 0.62f : 0.4f), maxH = TILE_H * (wide ? 0.42f : 0.56f);
         float scale = Math.min(maxW / logo.getWidth(), maxH / logo.getHeight());
-        float w = logo.getWidth() * scale, h = logo.getHeight() * scale;
-        canvas.drawBitmap(logo, null, new RectF((TILE_W - w) / 2, (TILE_H - h) / 2, (TILE_W + w) / 2, (TILE_H + h) / 2),
-                new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG));
+        // Filtered down to the exact size first, then drawn pixel for pixel.
+        Bitmap small = Ui.downscale(logo, Math.round(logo.getWidth() * scale), Math.round(logo.getHeight() * scale));
+        canvas.drawBitmap(small, Math.round((TILE_W - small.getWidth()) / 2f), Math.round((TILE_H - small.getHeight()) / 2f),
+                new Paint(Paint.FILTER_BITMAP_FLAG));
+        if (small != logo) small.recycle();
         return b;
     }
 
-    private static Bitmap darkTile() {
-        Bitmap b = Bitmap.createBitmap(TILE_W, TILE_H, Bitmap.Config.ARGB_8888);
+    private static Bitmap darkTile(int w, int h) {
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Paint bg = new Paint();
-        bg.setShader(new LinearGradient(0, 0, 0, TILE_H, 0xFF2B2E3A, 0xFF17191F, Shader.TileMode.CLAMP));
-        new Canvas(b).drawRect(0, 0, TILE_W, TILE_H, bg);
+        bg.setShader(new LinearGradient(0, 0, 0, h, 0xFF2B2E3A, 0xFF17191F, Shader.TileMode.CLAMP));
+        new Canvas(b).drawRect(0, 0, w, h, bg);
         return b;
     }
 
