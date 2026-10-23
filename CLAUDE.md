@@ -166,7 +166,8 @@ HDMI (Chromecast with Google TV, Google TV Streamer, onn 4K, NVIDIA Shield). Set
   rounds images with a shader instead of clipPath: their GPUs (a Mi Box 3's Mali-450) choked on those.
   Android 11 runs the screensaver as `ScreensaverAlone`, in the main process (its DreamActivity needs the dream in the
   app's default process, without a home activity); `res/values-v30/bools.xml` picks it, every other version keeps
-  `Screensaver` in `:home`. Keep both in step.
+  `Screensaver` in `:home`. Keep both in step. `ScreensaverAlone` reads `Prefs` from another process than the
+  settings screen's, so the screensaver calls `Prefs.reload()` when it starts.
   To check for newer APIs, compile against `platforms/android-26/android.jar`: only AGSL (`RuntimeShader`, guarded
   by a try/catch), `BitmapShader.setFilterMode` (guarded), `Recording.Node` and `Ui.Weighted` (the Android 9 font weight) should come up.
 - The home screen is drawn by hand on one Canvas (`HomeView`); the glass and the sky are AGSL shaders (`Shaders`,

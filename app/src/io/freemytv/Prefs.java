@@ -59,6 +59,16 @@ final class Prefs {
         return app.getSharedPreferences("settings", Context.MODE_PRIVATE);
     }
 
+    /**
+     * Reads the file again if another process changed it. On Android 11 the screensaver runs in the main process
+     * (ScreensaverAlone), which otherwise keeps the values it first read, whatever the settings screen in :home saves.
+     */
+    @SuppressWarnings("deprecation")
+    static void reload() {
+        app.getSharedPreferences("settings", Context.MODE_MULTI_PROCESS);
+        version++;
+    }
+
     private static void put(String key, String value) {
         sp().edit().putString(key, value).apply();
         version++;
