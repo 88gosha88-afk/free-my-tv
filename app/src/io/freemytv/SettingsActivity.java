@@ -170,6 +170,7 @@ public class SettingsActivity extends Activity {
         private String[] whyRows;  // each row's reason, worked out once per screen (null: again on the next frame)
         private int whyScreen = -1, whyScroll = -1;
         private int sleepLeft;     // the sleep timer's minutes left, read with the state, not on every frame
+        private int whyState = -1;
         private String errorShown;
         private final Spoken spoken;
         private long startedAt, lastNanos, pendingAt, lastSky;
@@ -187,9 +188,12 @@ public class SettingsActivity extends Activity {
                 recs = Recs.status(getContext());
                 boolean nowBusy = !busyText().isEmpty();
                 if (nowBusy) pendingAt = 0;
+                // What can change the reasons away from a key: a switch (or the watchdog's revert) and the overlay's check.
+                int whyNow = (freeActive() ? 1 : 0) | (Capabilities.refused(getContext(), Capabilities.OVERLAY) ? 2 : 0);
+                if (whyNow != whyState) whyRows = null;
+                whyState = whyNow;
                 // A switch just ended: TalkBack reads how it went (the newest notice).
                 JSONArray notices = state.optJSONArray("notices");
-                if (wasBusy != nowBusy) whyRows = null;   // a switch began or ended: what needs Free My TV mode changes
                 if (wasBusy && !nowBusy && notices != null && notices.length() > 0) {
                     JSONObject newest = notices.optJSONObject(0);
                     if (newest != null) announceForAccessibility(newest.optString("text"));
@@ -637,12 +641,11 @@ public class SettingsActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     if (down && screen == SHELF_EDIT) {
                         moveShelfApp(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        invalidate();
                     } else if (down && (screen == HOME_SETTINGS || screen == REMOTE_KEYS || screen == POWER)) {
                         adjust(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                        whyRows = null;   // a value changed: what other rows need may have too
-                        invalidate();
                     }
+                    whyRows = null;   // a value or the rows' order changed: what each row needs may have too
+                    invalidate();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:

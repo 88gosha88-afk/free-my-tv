@@ -68,16 +68,25 @@ public class SleepOverlay extends Service {
         }
     }
 
+    private static final java.util.concurrent.atomic.AtomicBoolean allowing = new java.util.concurrent.atomic.AtomicBoolean();
+
     private static void allow(Context c) {
+        if (!allowing.compareAndSet(false, true)) return;   // one at a time, however fast the timer is stepped
         new Thread(() -> {
             try (Adb adb = Adb.connect(c, 0, null)) {
                 adb.shell("appops set " + HomeMode.PKG + " SYSTEM_ALERT_WINDOW allow");
             } catch (java.io.IOException e) {
                 AppLog.w("over other apps: " + e.getMessage());   // ADB didn't answer: tried again next time, not refused
+                allowing.set(false);
                 return;
             }
             boolean works = Settings.canDrawOverlays(c);
+            for (int i = 0; i < 5 && !works; i++) {   // Android 8 can take a moment to see it
+                android.os.SystemClock.sleep(200);
+                works = Settings.canDrawOverlays(c);
+            }
             Capabilities.prove(c, Capabilities.OVERLAY, works);
+            allowing.set(false);
             if (works) new Handler(Looper.getMainLooper()).post(() -> update(c));
         }).start();
     }
@@ -102,11 +111,12 @@ public class SleepOverlay extends Service {
 
     @Override public void onCreate() {
         super.onCreate();
-        Ui.init(this);   // its own process: the app's font isn't loaded here yet
+        // In the foreground first: a quick stop right after the start must not find it still in the background.
         NotificationManager nm = getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel("sleep", Ui.tr("Sleep Timer"), NotificationManager.IMPORTANCE_MIN));
         startForeground(1, new Notification.Builder(this, "sleep").setSmallIcon(R.drawable.icon)
                 .setContentTitle(Ui.tr("Sleep Timer")).build());
+        Ui.init(this);   // its own process: the app's font isn't loaded here yet
         float k = getResources().getDisplayMetrics().widthPixels / 1920f;
         view = new TextView(this);
         view.setTypeface(Ui.regular);
@@ -144,7 +154,7 @@ public class SleepOverlay extends Service {
         }
         handler.removeCallbacks(tick);
         tick.run();
-        return START_NOT_STICKY;
+        return START_REDELIVER_INTENT;   // if Android stops the process, the pill comes back as it was
     }
 
     @Override public void onDestroy() {

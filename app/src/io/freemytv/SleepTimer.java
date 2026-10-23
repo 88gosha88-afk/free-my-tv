@@ -78,7 +78,7 @@ final class SleepTimer {
             PendingIntent alarm = alarm(c, SystemClock.uptimeMillis(), 0);
             try {
                 am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, alarm);
-            } catch (SecurityException e) {   // exact alarms taken away (Android 12's settings): a minute late, then
+            } catch (SecurityException e) {   // Android 12 with exact alarms turned off for it: up to 10 minutes late
                 am.setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, 60_000, alarm);
             }
             AppLog.w("Sleep timer: " + minutes + " min");

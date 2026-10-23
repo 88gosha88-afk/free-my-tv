@@ -74,6 +74,14 @@ final class Capabilities {
         return proof(c, name, false).exists();
     }
 
+    /** Neither proven nor refused: checked again at work (Original sets back what the check depends on). */
+    static void forget(Context c, String name) {
+        //noinspection ResultOfMethodCallIgnored
+        proof(c, name, true).delete();
+        //noinspection ResultOfMethodCallIgnored
+        proof(c, name, false).delete();
+    }
+
     /** Records what a feature saw at work: it works, or it doesn't (and then its option shows unavailable). */
     static void prove(Context c, String name, boolean works) {
         try {
