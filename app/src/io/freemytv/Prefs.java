@@ -76,8 +76,10 @@ final class Prefs {
      */
     @SuppressWarnings("deprecation")
     static void reload() {
+        String before = language();
         app.getSharedPreferences("settings", Context.MODE_MULTI_PROCESS);
         version++;
+        if (!language().equals(before)) Ui.applyLanguage();
     }
 
     private static void put(String key, String value) {

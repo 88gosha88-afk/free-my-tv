@@ -172,7 +172,8 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   Android 11 runs the screensaver as `ScreensaverAlone`, in the main process (its DreamActivity needs the dream in the
   app's default process, without a home activity); `res/values-v30/bools.xml` picks it, every other version keeps
   `Screensaver` in `:home`. Keep both in step. `ScreensaverAlone` reads `Prefs` from another process than the
-  settings screen's, so the screensaver calls `Prefs.reload()` when it starts.
+  settings screen's, so it calls `Prefs.reload()` when it starts (which also re-applies a new language; `HomeData`
+  fetches the forecast again when the city changed).
   To check for newer APIs, compile against `platforms/android-26/android.jar`: only AGSL (`RuntimeShader`, guarded
   by a try/catch), `BitmapShader.setFilterMode` (guarded), `Recording.Node` and `Ui.Weighted` (the Android 9 font weight) should come up.
 - The home screen is drawn by hand on one Canvas (`HomeView`); the glass and the sky are AGSL shaders (`Shaders`,
