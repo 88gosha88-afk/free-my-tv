@@ -11,15 +11,17 @@ the screensaver's size, without its GPS and other tags) and deletes what was sen
 them on the TV: Home Settings > My Photos > OK. JPEG, PNG and WebP; HEIC on Android 9 and newer.
 """
 import os
+import shutil
 import subprocess
 import sys
 
 INBOX = '/sdcard/Android/data/io.freemytv/files/photos'
 KINDS = ('.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif')
+SERIAL = []   # -s <ip>:5555 once connected, so a phone or another TV on adb doesn't get in the way
 
 
 def adb(*args):
-    return subprocess.run(['adb', *args], capture_output=True, text=True)
+    return subprocess.run(['adb', *SERIAL, *args], capture_output=True, text=True)
 
 
 def photos(paths):
@@ -42,6 +44,9 @@ def main():
     if not args or args[0] in ('-h', '--help'):
         print(__doc__.strip())
         return 0 if args else 2
+    if not shutil.which('adb'):
+        print('adb not found: install the Android platform tools (see the README).')
+        return 1
     if not os.path.exists(args[0]) and args[0][0].isdigit():
         ip = args.pop(0)
         target = ip if ':' in ip else ip + ':5555'
@@ -49,12 +54,20 @@ def main():
         if 'connected' not in r.stdout:
             print(f'Could not connect to {target}: {(r.stdout + r.stderr).strip()}')
             return 1
+        SERIAL[:] = ['-s', target]
     found = photos(args)
     if not found:
         print('No photos to send.')
         return 1
-    if adb('shell', 'mkdir', '-p', INBOX).returncode != 0:
+    listed = adb('shell', 'pm', 'list', 'packages', 'io.freemytv')
+    if listed.returncode != 0:
         print('No TV connected: give its IP address first (adb devices lists the connected ones).')
+        return 1
+    if 'package:io.freemytv' not in listed.stdout.split():
+        print('Free My TV is not installed on this TV.')
+        return 1
+    if adb('shell', 'mkdir', '-p', INBOX).returncode != 0:
+        print(f'Could not create {INBOX} on the TV.')
         return 1
     for i, path in enumerate(found):
         # Numbered so the app imports them in this order.
