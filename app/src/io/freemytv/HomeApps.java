@@ -75,7 +75,7 @@ final class HomeApps {
     }
 
     /**
-     * Apps on the home shelf, in this order, when installed (up to MAX_SHELF): key, name, package, brand color (for
+     * Apps on the home shelf, in this order, when installed (the first FEW_APPS): key, name, package, brand color (for
      * its logo on glass) and how to lift the logo from the app's TV art: "tint" = a white logo takes the art's
      * background color (Prime Video, Globoplay); "play" = the white triangle inside the red button stays white
      * (YouTube); empty = the art's colors as they are. Last, a visual size tweak for the logo. Edit freely.
@@ -101,7 +101,25 @@ final class HomeApps {
         {"globoplay", "Globoplay", "com.globo.globotv", "FF5A1F", "tint", "1"},
         {"spotify", "Spotify", "com.spotify.tv.android", "1DB954", "", "1"},
     };
-    static final int MAX_SHELF = 8;
+    /**
+     * Apps the shelf shows at once (it scrolls for the rest): 8, today's smallest tiles (178 wide in HomeView's 1760 of
+     * content), so a shelf of up to 8 looks as it always did. The built-in list keeps 8, and low-memory TVs hold 8 at
+     * most, without scrolling: every app on the shelf keeps its logo in memory, at two sizes.
+     */
+    private static final int SHELF_VISIBLE = 8, FEW_APPS = 8;
+
+    /** Low memory (TCL's 1 GB models): every MB counts. */
+    static boolean lowRam(Context c) {
+        return c.getSystemService(android.app.ActivityManager.class).isLowRamDevice();
+    }
+
+    static int shelfVisible(Context c) {
+        return lowRam(c) ? FEW_APPS : SHELF_VISIBLE;
+    }
+
+    static int maxShelf(Context c) {
+        return lowRam(c) ? FEW_APPS : Integer.MAX_VALUE;
+    }
     /** Live TV apps of some brands (the antenna's channels open through the standard Android request first). */
     static final String[] LIVE_TV_APPS = {"com.tcl.tv", "com.google.android.tv", "com.mediatek.wwtv.tvcenter", "com.sony.dtv.tvx",
             "com.smartdevice.livetv", "com.mediatek.tv.oneworld.tvcenter", "com.amazon.tv.livetv", "com.amazon.mediatek.livetv"};
@@ -133,8 +151,9 @@ final class HomeApps {
     static List<Item> shelf(Context c, boolean extract) {
         List<Item> items = new ArrayList<>();
         PackageManager pm = c.getPackageManager();
+        int max = maxShelf(c);
         for (String pkg : shelfPackages(c)) {
-            if (items.size() >= MAX_SHELF) break;
+            if (items.size() >= max) break;
             Intent launch = launchIntent(pm, pkg);
             if (launch == null) continue;
             ResolveInfo ri = pm.resolveActivity(launch, 0);
@@ -174,7 +193,7 @@ final class HomeApps {
         Set<String> keys = new HashSet<>();
         PackageManager pm = c.getPackageManager();
         for (String[] d : SHELF) {
-            if (out.size() < MAX_SHELF && !keys.contains(d[0]) && launchIntent(pm, d[2]) != null) {
+            if (out.size() < FEW_APPS && !keys.contains(d[0]) && launchIntent(pm, d[2]) != null) {
                 keys.add(d[0]);
                 out.add(d[2]);
             }
