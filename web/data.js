@@ -241,10 +241,13 @@ var Data = (function () {
     return null;
   }
 
-  function service(providerName) {
+  /** "… Amazon Channel" is sold inside another app; Apple TV is only the streaming service (350; 2 is the store). */
+  function service(providerName, providerId) {
     var n = (providerName || '').toLowerCase();
+    if (n.indexOf(' channel') >= 0) return null;
     for (var i = 0; i < SERVICES.length; i++) {
       var s = SERVICES[i];
+      if (s[1] === 'appletv' && providerId !== 350) continue;
       if (s[0] === 'max' ? /\bmax\b/.test(n) : n.indexOf(s[0]) >= 0) return s;
     }
     return null;
@@ -356,7 +359,7 @@ var Data = (function () {
       var wp = o['watch/providers'], here = wp && wp.results && wp.results[REGION], flat = here && here.flatrate;
       p.app = null;
       for (var i = 0; flat && i < flat.length && !p.app; i++) {
-        var s = service(flat[i].provider_name);
+        var s = service(flat[i].provider_name, flat[i].provider_id);
         if (s && appFor(s[1])) { p.app = s[1]; p.service = s[4]; }
       }
       if (p.service && p.app) parts.push(p.service);
@@ -420,7 +423,7 @@ var Data = (function () {
       if (err) { done(err); return; }
       var ids = [];
       for (var i = 0; res.results && i < res.results.length; i++) {
-        var s = service(res.results[i].provider_name);
+        var s = service(res.results[i].provider_name, res.results[i].provider_id);
         if (s && appFor(s[1])) ids.push(res.results[i].provider_id);
       }
       if (!ids.length) { done(new Error("none of the TV's streaming apps are on TMDB")); return; }
