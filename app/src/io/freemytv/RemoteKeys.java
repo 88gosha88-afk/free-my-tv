@@ -19,6 +19,8 @@ import android.view.KeyEvent;
  * the filter sees them first, the same way.
  * On Xiaomi TVs whose remote has no Home button, its Mi button is BUTTON_4, a global key that Xiaomi's GlobalKeyReceiver
  * (partnercustomizer) turns into PatchWall. The filter sees it first, and by default it opens the home screen.
+ * On Xiaomi TVs sold in Russia, the Okko, VK, Rutube, KION, Wink and IVI buttons are global keys too, for Xiaomi's
+ * hot-key receiver (partnercustomizer's GlobalKeyReceiver).
  */
 final class RemoteKeys {
     private RemoteKeys() {}
