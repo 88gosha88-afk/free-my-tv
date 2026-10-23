@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
  *    through the digits, bent at the edges; Shaders.GLASS_TEXT) and the compact prices;
  *  - bottom left, the photo's caption: the time-of-day label ("TONIGHT"), the title, and genre · runtime · service.
  * Dark scrims only where there is text, stronger where the photo is bright. Any key exits (as on Apple TV).
+ * With your own photos on (Photos), those instead, without a caption.
  * Without photos (no TMDB key, or before the first fetch): the big clock over the night aurora.
  */
 final class DreamView extends View implements Choreographer.FrameCallback, HomeData.Listener, Recs.Listener {
@@ -168,12 +169,13 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         startedAt = clock();
         lastFrame = 0;
         failed.clear();
-        fallback = recs.showcase().isEmpty();
+        fallback = photos().isEmpty();
         data.addListener(this);
         recs.addListener(this);
         data.refreshIfStale();
         recs.refreshIfStale();
         recs.prefetchAll();
+        Photos.importInbox(getContext(), () -> { if (running) prepareNext(); });
         prepareNext();
         handler.postDelayed(tick, 60_000);
         Choreographer.getInstance().postFrameCallback(this);
@@ -258,10 +260,15 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
 
     // MARK: - Photos
 
+    /** Your photos when they are on, otherwise the picks'. */
+    private List<Recs.Pick> photos() {
+        return Photos.on(getContext()) ? Photos.picks(getContext()) : recs.showcase();
+    }
+
     /** Loads the next photo in the background (one at a time); once ready, it comes in at the right moment. */
     private void prepareNext() {
         if (!running || decoding || prepared != null) return;
-        List<Recs.Pick> list = recs.showcase();
+        List<Recs.Pick> list = photos();
         if (list.isEmpty()) return;
         Slide last = incoming != null ? incoming : current;
         int start = 0;
@@ -287,7 +294,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             prepared = newSlide(pick, last.image, last.frost, last.lightCaption, last.lightClock);
             return;
         }
-        File file = recs.readyImage(pick);
+        File file = pick.photo != null ? (pick.photo.exists() ? pick.photo : null) : recs.readyImage(pick);
         if (file == null) {
             failed.add(Recs.key(pick));   // the image is gone from disk: try the next one
             prepareNext();
@@ -301,9 +308,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             float[] light = new float[2];
             try {
                 images = Backdrop.photo(file, PW, PH, light);
-                images[0] = Backdrop.gpu(withScrims(images[0], light[0], light[1]));
+                images[0] = Backdrop.gpu(withScrims(images[0], chosen.photo == null, light[0], light[1]));
             } catch (Exception | OutOfMemoryError e) {
-                AppLog.w("screensaver: photo for “" + chosen.title + "”: " + e.getMessage());
+                AppLog.w("screensaver: photo for “" + (chosen.photo != null ? chosen.photo.getName() : chosen.title) + "”: " + e.getMessage());
             }
             final Bitmap[] ready = images;
             handler.post(() -> {
@@ -458,11 +465,11 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
      * background): each frame draws only the photo (the TV's GPU feels every full-screen layer). With the slow zoom,
      * they move a little along with the photo, which makes no difference to the text.
      */
-    private static Bitmap withScrims(Bitmap photo, float lightCaption, float lightClock) {
+    private static Bitmap withScrims(Bitmap photo, boolean withCaption, float lightCaption, float lightClock) {
         int w = photo.getWidth(), h = photo.getHeight();
         Canvas c = new Canvas(photo);
         Paint p = new Paint(Paint.DITHER_FLAG);
-        float caption = scrimStrength(lightCaption, 0.5f), corner = scrimStrength(lightClock, 0.42f);
+        float caption = withCaption ? scrimStrength(lightCaption, 0.5f) : 0, corner = scrimStrength(lightClock, 0.42f);
         p.setShader(new LinearGradient(0, h, 0, h * 0.42f,
                 new int[] {black(0.55f * caption), black(0.33f * caption), black(0.11f * caption), 0},
                 new float[] {0, 0.35f, 0.7f, 1}, Shader.TileMode.CLAMP));
@@ -677,6 +684,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private void recordCaption(Slide s) {
         Canvas c = s.caption.beginRecording(w, h);
         try {
+            if (s.pick.photo != null) return;   // your photos have no caption
             float x = MARGIN * k, metaBase = META_BASE * k, titleBase = metaBase - 58 * k;
             String title = s.pick.title == null ? "" : s.pick.title;
             StaticLayout t = StaticLayout.Builder.obtain(title, 0, title.length(), titlePaint, Math.round(TITLE_W * k))

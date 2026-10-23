@@ -23,6 +23,7 @@ Open source. Built with Claude Code. One button to undo.
 - **Weather and markets, one press away.** The hour-by-hour forecast, sunrise and sunset, and live crypto prices.
 - **Light by day, dark by night.** It follows your city's real sunset, the way your phone does.
 - **A screensaver to match.** Full-screen photos of the picks with a big glass clock.
+- **Your own photos.** Send them from your computer (up to 100): the screensaver shows them, and without picks one is the home screen's background each hour.
 - **Fast.** 60 fps, every frame in 16.6 ms, on the TV's own chip. The home screen uses 96 MB of memory instead of 242 MB (−60%).<br><sub>Measured on a 98″ TCL Google TV running Android 14.</sub>
 - **Set up on the TV.** Language, your city, temperature, theme, the weather and prices cards, which coins, and the apps on the shelf, in Free My TV's own settings.
 - **Safe.** No root. Nothing is uninstalled. One button brings back the factory home screen.
@@ -131,6 +132,16 @@ Free, and it takes two minutes: create an account at [themoviedb.org](https://ww
 ### Opening a title, not just its app (optional)
 
 With a free [Watchmode](https://api.watchmode.com/) key (`watchmode_key=` in `config.properties`), a pick opens its own page in the streaming app instead of the app's home. The free plan (2,500 credits a month) is enough: each title costs two requests the first time and is remembered after that. It works where the app takes the title's web address (tested: Prime Video and JioHotstar); where it doesn't, the pick just opens the app, as without a key.
+
+### Your own photos (optional)
+
+With the TV connected over adb (see *Install*), send photos or whole folders from your computer:
+
+```bash
+python3 tools/photos.py <TV IP> beach.jpg hills.jpg Holidays/
+```
+
+They land in the app's own folder on the TV (no permission needed). The next time the home screen, the screensaver or Free My TV's settings open, the app imports each one: turned upright, cropped to 16:9, resized for the TV and saved without its GPS and other tags; what was sent is then deleted. The screensaver shows them in the order you sent them, instead of the picks' photos; without a TMDB key, one of them is the home screen's background, a new one every hour. *Home Settings* → *My Photos*: the arrows turn them on or off, OK removes them. Up to 100; JPEG, PNG and WebP, and HEIC on Android 9 and newer.
 
 ## Going back
 

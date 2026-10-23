@@ -142,6 +142,10 @@ final class Prefs {
     static boolean quotes() { return sp().getBoolean("quotes", Config.SHOW_CRYPTO); }
     static void setQuotes(boolean on) { put("quotes", on); }
 
+    /** Your photos from a USB stick (Photos) on the screensaver and behind the home screen, once imported. */
+    static boolean photos() { return sp().getBoolean("photos", true); }
+    static void setPhotos(boolean on) { put("photos", on); }
+
     static boolean coin(int i) { return sp().getBoolean("coin" + i, true); }
     static void setCoin(int i, boolean on) { put("coin" + i, on); }
 
