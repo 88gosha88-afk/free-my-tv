@@ -104,7 +104,7 @@ final class Ui {
     private static final String[][] REGIONS = {
         {"pt", "BR"}, {"es", "ES"}, {"de", "DE"}, {"fr", "FR"}, {"it", "IT"}, {"nl", "NL"}, {"pl", "PL"}, {"sv", "SE"},
         {"da", "DK"}, {"nb", "NO"}, {"fi", "FI"}, {"cs", "CZ"}, {"ro", "RO"}, {"tr", "TR"}, {"ru", "RU"}, {"uk", "UA"},
-        {"el", "GR"}, {"ja", "JP"}, {"ko", "KR"}, {"hi", "IN"}, {"id", "ID"}, {"vi", "VN"},
+        {"el", "GR"}, {"ja", "JP"}, {"ko", "KR"}, {"hi", "IN"}, {"id", "ID"}, {"vi", "VN"}, {"th", "TH"},
     };
 
     /** The text for this English key in the current language (the English itself when there is none). */
