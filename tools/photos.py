@@ -5,7 +5,9 @@
     python3 tools/photos.py beach.jpg              # the TV adb is already connected to
 
 The photos go, in the order given (a folder's in name order), to the app's own folder on the TV
-(Android/data/io.freemytv/files/photos: adb can write there, and the app needs no permission). The next time the
+(Android/data/io.freemytv/files/photos: adb can write there, and the app needs no permission); where the TV keeps adb
+out of it (Android 11, Fire OS 8), they go through the app itself (`content write` to its PhotoInbox, which only adb
+may use). The next time the
 home screen, the screensaver or Free My TV's settings open, the app imports each one (upright, cropped to 16:9, at
 the screensaver's size, without its GPS and other tags) and deletes what was sent. Up to 100 photos in all; remove
 them on the TV: Home Settings > My Photos > OK. JPEG, PNG and WebP; HEIC on Android 9 and newer.
@@ -66,13 +68,19 @@ def main():
     if 'package:io.freemytv' not in listed.stdout.split():
         print('Free My TV is not installed on this TV.')
         return 1
-    if adb('shell', 'mkdir', '-p', INBOX).returncode != 0:
-        print(f'Could not create {INBOX} on the TV.')
-        return 1
+    # Android 11 (Fire OS 8 too) keeps adb out of other apps' Android/data folders: then through the app itself.
+    direct = adb('shell', 'mkdir', '-p', INBOX).returncode == 0
     for i, path in enumerate(found):
         # Numbered so the app imports them in this order.
         name = f'{i:03d}-' + os.path.basename(path).replace(' ', '_')
-        r = adb('push', path, f'{INBOX}/{name}')
+        if direct:
+            r = adb('push', path, f'{INBOX}/{name}')
+        else:
+            with open(path, 'rb') as f:
+                r = subprocess.run(['adb', *SERIAL, 'exec-in', 'content', 'write', '--uri',
+                                    f'content://io.freemytv.photos/{name}'], stdin=f, capture_output=True, text=True)
+            if r.returncode == 0 and r.stderr.strip():
+                r = subprocess.CompletedProcess(r.args, 1, r.stdout, r.stderr)   # content prints errors, exits 0
         if r.returncode != 0:
             print(f'Could not send {path}: {(r.stdout + r.stderr).strip()}')
             return 1
