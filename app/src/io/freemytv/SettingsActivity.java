@@ -245,7 +245,8 @@ public class SettingsActivity extends Activity {
                 case REMOTE_KEYS: {
                     boolean keys = screen == REMOTE_KEYS;
                     String[] labels = keys ? keyLabels() : settingLabels(), values = keys ? keyValues() : settingValues();
-                    return row < labels.length ? labels[row] + ", " + values[row] : "";
+                    int at = keys ? row : pickScroll + row;
+                    return at < labels.length ? labels[at] + ", " + values[at] : "";
                 }
                 case PICKER: {
                     int at = pickScroll + row;
@@ -278,9 +279,6 @@ public class SettingsActivity extends Activity {
             } else if (screen == HOME_CHOICE) {
                 top = LIST_TOP + 20 + row * (CHOICE_H + ROW_GAP);
                 height = CHOICE_H;
-            } else if (screen == HOME_SETTINGS) {
-                top = LIST_TOP + 20 + row * settingsPitch();
-                height = settingsPitch() - LIST_ROW_GAP;
             } else {
                 top = LIST_TOP + 20 + row * (LIST_ROW_H + LIST_ROW_GAP);
                 height = LIST_ROW_H;
@@ -364,7 +362,7 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case MAIN: return 7;
                 case HOME_CHOICE: return 2;
-                case HOME_SETTINGS: return settingLabels().length;
+                case HOME_SETTINGS: return Math.min(SETTINGS_VISIBLE, settingLabels().length);
                 case PICKER: return Math.min(PICK_VISIBLE, pickLabels.size());
                 case SHELF_EDIT: return Math.min(PICK_VISIBLE, shelfRows.size());
                 default: return Prefs.KEYS.length;
@@ -635,6 +633,7 @@ public class SettingsActivity extends Activity {
                         if (backDown && !e.isCanceled()) {
                             if (screen == PICKER && (pickFor == PICK_CITY || pickFor == PICK_LANGUAGE)) {
                                 focus = pickFor == PICK_CITY ? CITY_ROW : 0;
+                                pickScroll = 0;   // both rows are on the list's first screen
                                 screen = HOME_SETTINGS;
                             } else if (screen == PICKER) {
                                 focus = pickFor - 1;
@@ -660,11 +659,8 @@ public class SettingsActivity extends Activity {
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** Home Settings: language, temperature, theme, my photos, sounds, weather, city, quotes, then one row per coin. */
         private static final int PHOTOS_ROW = 3, CITY_ROW = 6, COIN_ROWS = 8;
-
-        /** Row spacing in Home Settings: tighter when the list is long, so it still fits above the hint. */
-        private float settingsPitch() {
-            return Math.min(LIST_ROW_H + LIST_ROW_GAP, 790f / settingLabels().length);
-        }
+        /** Home Settings rows on screen at once (what fits above the hints at 1080p); a longer list scrolls. */
+        private static final int SETTINGS_VISIBLE = 10;
 
         private boolean dollar() {
             return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
@@ -775,7 +771,8 @@ public class SettingsActivity extends Activity {
                 Prefs.setKeyApp(Prefs.KEYS[focus], appPkgs.get(next));
                 return;
             }
-            switch (focus) {
+            int row = pickScroll + focus;
+            switch (row) {
                 case 0: break;   // OK opens the language picker.
                 case 1: {
                     int at = java.util.Arrays.asList(UNITS).indexOf(Prefs.temperature());
@@ -797,7 +794,7 @@ public class SettingsActivity extends Activity {
                 case 7: Prefs.setQuotes(!Prefs.quotes()); break;
                 default:
                     if (!Prefs.quotes()) return;
-                    Prefs.setCoin(focus - COIN_ROWS, !Prefs.coin(focus - COIN_ROWS));
+                    Prefs.setCoin(row - COIN_ROWS, !Prefs.coin(row - COIN_ROWS));
                     break;
             }
             HomeData.get(getContext()).settingsChanged();
@@ -873,11 +870,11 @@ public class SettingsActivity extends Activity {
         }
 
         private boolean scrolling() {
-            return screen == PICKER || screen == SHELF_EDIT;
+            return screen == PICKER || screen == SHELF_EDIT || screen == HOME_SETTINGS;
         }
 
         private int listSize() {
-            return screen == SHELF_EDIT ? shelfRows.size() : pickLabels.size();
+            return screen == SHELF_EDIT ? shelfRows.size() : screen == HOME_SETTINGS ? settingLabels().length : pickLabels.size();
         }
 
         // MARK: - Shelf editor
@@ -1032,25 +1029,28 @@ public class SettingsActivity extends Activity {
             Paint heading = Ui.text(Ui.displaySemibold, 34 * k, 0xFFFFFFFF);
             c.drawText(keys ? Ui.tr("Remote Buttons") : Ui.tr("Home Settings"),
                     LIST_X * k + 30 * k, (LIST_TOP - 24) * k, heading);
-            float pitch = keys ? LIST_ROW_H + LIST_ROW_GAP : settingsPitch();
-            for (int i = 0; i < labels.length; i++) {
+            float pitch = LIST_ROW_H + LIST_ROW_GAP;
+            int rows = keys ? labels.length : rowCount(), from = keys ? 0 : pickScroll;
+            for (int i = 0; i < rows; i++) {
                 float y = (LIST_TOP + 20 + i * pitch) * k;
-                rowRect.set(LIST_X * k, y, LIST_R * k, y + (pitch - LIST_ROW_GAP) * k);
+                rowRect.set(LIST_X * k, y, LIST_R * k, y + LIST_ROW_H * k);
                 float f = drawRowBackground(c, i);
                 rowLabel.setColor(blend(0xF2FFFFFF, INK, f));
-                boolean locked = !keys && i >= COIN_ROWS && !Prefs.quotes();
+                boolean locked = !keys && from + i >= COIN_ROWS && !Prefs.quotes();
                 rowValue.setColor(blend(locked ? 0x59FFFFFF : 0xB3FFFFFF, locked ? 0x591C1C1E : 0xB31C1C1E, f));
                 if (locked) rowLabel.setColor(blend(0x73FFFFFF, 0x731C1C1E, f));
                 float base = rowRect.centerY() + Ui.halfCap(rowLabel);
-                c.drawText(labels[i], rowRect.left + 30 * k, base, rowLabel);
-                c.drawText(values[i], rowRect.right - 30 * k, base, rowValue);
+                c.drawText(labels[from + i], rowRect.left + 30 * k, base, rowLabel);
+                c.drawText(values[from + i], rowRect.right - 30 * k, base, rowValue);
             }
             Paint hint = Ui.text(Ui.regular, 23 * k, 0x8CFFFFFF);
-            float hy = (LIST_TOP + 20 + labels.length * pitch + 36) * k;
-            c.drawText(!keys && focus == PHOTOS_ROW ? (Photos.files(getContext()).isEmpty()
+            float hy = (LIST_TOP + 20 + rows * pitch + 36) * k;
+            // A list longer than the screen says where we are in it, as the app picker does.
+            String where = rows < labels.length ? (from + focus + 1) + " / " + labels.length + "  ·  " : "";
+            c.drawText(where + (!keys && from + focus == PHOTOS_ROW ? (Photos.files(getContext()).isEmpty()
                     ? Ui.tr("Send them from a computer: see “Your own photos” in the README.")
                     : Ui.tr("OK removes them; the arrows turn them on or off."))
-                    : Ui.tr("OK or the arrows change the value."), LIST_X * k + 30 * k, hy, hint);
+                    : Ui.tr("OK or the arrows change the value.")), LIST_X * k + 30 * k, hy, hint);
             if (keys) {
                 c.drawText(RemoteKeys.VESTEL ? Ui.tr("YouTube, Prime Video and Google Play: the TV itself controls those buttons.")
                         : RemoteKeys.KTC ? Ui.tr("Netflix, YouTube and Prime Video: the TV itself controls those buttons.")
@@ -1078,10 +1078,12 @@ public class SettingsActivity extends Activity {
                 Prefs.setCity(city[1], city[2], city[3]);
                 HomeData.get(c).settingsChanged();
                 focus = CITY_ROW;
+                pickScroll = 0;
                 screen = HOME_SETTINGS;
             } else if (screen == PICKER && pickFor == PICK_LANGUAGE) {
                 Prefs.setLanguage(languageChoices()[pickScroll + focus]);
                 focus = 0;
+                pickScroll = 0;
                 screen = HOME_SETTINGS;
             } else if (screen == PICKER) {
                 int at = pickScroll + focus;
@@ -1094,12 +1096,12 @@ public class SettingsActivity extends Activity {
                 return;
             } else if (screen == REMOTE_KEYS) {
                 openPicker(focus + 1);
-            } else if (screen == HOME_SETTINGS && focus == 0) {
+            } else if (screen == HOME_SETTINGS && pickScroll + focus == 0) {
                 openPicker(PICK_LANGUAGE);
-            } else if (screen == HOME_SETTINGS && focus == CITY_ROW) {
+            } else if (screen == HOME_SETTINGS && pickScroll + focus == CITY_ROW) {
                 askCity();
                 return;
-            } else if (screen == HOME_SETTINGS && focus == PHOTOS_ROW) {
+            } else if (screen == HOME_SETTINGS && pickScroll + focus == PHOTOS_ROW) {
                 askRemovePhotos();
                 return;
             } else if (screen == HOME_SETTINGS) {
@@ -1116,6 +1118,7 @@ public class SettingsActivity extends Activity {
             } else if (focus == 2) {
                 screen = HOME_SETTINGS;
                 focus = 0;
+                pickScroll = 0;
             } else if (focus == 3) {
                 openShelfEditor(false);
             } else if (focus == 4) {
