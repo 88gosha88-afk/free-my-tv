@@ -45,28 +45,34 @@ final class SleepTimer {
         set(c, next > MOST ? 0 : next);
     }
 
-    /** Original mode: no alarms. */
+    /**
+     * Original mode and the watchdog's revert (main process): the alarm and the pill go. Prefs aren't written here: that
+     * process keeps the settings it read when it started, and writing would bring old ones back.
+     */
     static void stop(Context c) {
-        set(c, 0);
-    }
-
-    /** Starts the timer for `minutes` from now; 0 stops it. */
-    static void set(Context c, int minutes) {
-        AlarmManager am = c.getSystemService(AlarmManager.class);
         PendingIntent old = alarm(c, 0, PendingIntent.FLAG_NO_CREATE);
         if (old != null) {
-            am.cancel(old);
+            c.getSystemService(AlarmManager.class).cancel(old);
             old.cancel();
         }
+        c.stopService(new Intent(c, SleepOverlay.class));
+    }
+
+    /** Starts the timer for `minutes` from now; 0 stops it (Settings, in :home). */
+    static void set(Context c, int minutes) {
+        stop(c);
         Prefs.setSleepAt(minutes == 0 ? 0 : System.currentTimeMillis() + minutes * 60_000L);
-        if (minutes == 0) {
-            SleepOverlay.update(c);
-            return;
+        if (minutes > 0) {
+            AlarmManager am = c.getSystemService(AlarmManager.class);
+            long at = SystemClock.elapsedRealtime() + minutes * 60_000L;
+            PendingIntent alarm = alarm(c, SystemClock.uptimeMillis(), 0);
+            try {
+                am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, alarm);
+            } catch (SecurityException e) {   // exact alarms taken away (Android 12's settings): a minute late, then
+                am.setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, 60_000, alarm);
+            }
+            AppLog.w("Sleep timer: " + minutes + " min");
         }
-        // A window, not an exact alarm (those need a permission from Android 12): a minute late is fine.
-        am.setWindow(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + minutes * 60_000L, 60_000,
-                alarm(c, SystemClock.uptimeMillis(), 0));
-        AppLog.w("Sleep timer: " + minutes + " min");
         SleepOverlay.update(c);
     }
 

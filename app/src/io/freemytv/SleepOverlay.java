@@ -21,7 +21,8 @@ import android.widget.TextView;
 /**
  * Settings > Sleep Timer > Show Time Left: the sleep timer's minutes left over anything on screen, where picked
  * (Position), while the timer runs, in the home screen's light or dark glass. A foreground service, so Android keeps it
- * while another app plays.
+ * while another app plays, in a process of its own (:sleep) that reads nothing: the end, the place and what day or night
+ * depends on come in its Intent.
  */
 public class SleepOverlay extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -29,6 +30,8 @@ public class SleepOverlay extends Service {
     private WindowManager.LayoutParams layout;
     private BitmapDrawable moon;
     private GradientDrawable pill;
+    private long endsAt, sunrise, sunset;
+    private String theme = "auto";
 
     /** Settings > Sleep Timer > Position: the top center first, then around the screen. */
     private static final int[] GRAVITY = {Gravity.TOP | Gravity.CENTER_HORIZONTAL, Gravity.TOP | Gravity.RIGHT,
@@ -53,7 +56,9 @@ public class SleepOverlay extends Service {
      * shows the minutes instead (HomeView).
      */
     static void update(Context c) {
-        Intent i = new Intent(c, SleepOverlay.class);
+        HomeData.Weather w = HomeData.get(c).weather;
+        Intent i = new Intent(c, SleepOverlay.class).putExtra("endsAt", Prefs.sleepAt()).putExtra("place", Prefs.sleepPlace())
+                .putExtra("theme", Prefs.theme()).putExtra("sunrise", w.sunrise).putExtra("sunset", w.sunset);
         boolean wanted = Prefs.sleepShown() && SleepTimer.minutesLeft(c) > 0;
         if (wanted && Settings.canDrawOverlays(c)) {
             c.startForegroundService(i);
@@ -68,7 +73,8 @@ public class SleepOverlay extends Service {
             try (Adb adb = Adb.connect(c, 0, null)) {
                 adb.shell("appops set " + HomeMode.PKG + " SYSTEM_ALERT_WINDOW allow");
             } catch (java.io.IOException e) {
-                AppLog.w("over other apps: " + e.getMessage());
+                AppLog.w("over other apps: " + e.getMessage());   // ADB didn't answer: tried again next time, not refused
+                return;
             }
             boolean works = Settings.canDrawOverlays(c);
             Capabilities.prove(c, Capabilities.OVERLAY, works);
@@ -78,23 +84,18 @@ public class SleepOverlay extends Service {
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            int left = SleepTimer.minutesLeft(SleepOverlay.this);
-            if (left == 0 || !Prefs.sleepShown()) {
+            long now = System.currentTimeMillis();
+            if (now >= endsAt) {
                 stopSelf();
                 return;
             }
-            view.setText(Ui.trf("Off in {n} min", "n", left));
+            view.setText(Ui.trf("Off in {n} min", "n", (int) ((endsAt - now + 59_999) / 60_000)));
             // The home screen's glass: white with dark ink by day, smoked with light ink at night (Settings > Theme).
-            boolean night = HomeData.get(SleepOverlay.this).isNight(System.currentTimeMillis());
+            boolean night = HomeData.isNight(theme, now, sunrise, sunset);
             int ink = night ? 0xEBFFFFFF : 0xFF1D1D1F;
             view.setTextColor(ink);
             moon.setTint(ink);
             pill.setColor(night ? 0xCC1C1C1E : 0xE6F5F5F7);
-            int place = Prefs.sleepPlace() % PLACES;
-            if (layout.gravity != GRAVITY[place]) {
-                layout.gravity = GRAVITY[place];
-                getSystemService(WindowManager.class).updateViewLayout(view, layout);
-            }
             handler.postDelayed(this, 15_000);
         }
     };
@@ -121,13 +122,25 @@ public class SleepOverlay extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
-        layout.gravity = GRAVITY[Prefs.sleepPlace() % PLACES];
         layout.x = layout.y = Math.round(48 * k);
         getSystemService(WindowManager.class).addView(view, layout);
     }
 
-    /** Every update (a new time, Position, Show Time Left): drawn again now. */
+    /** Every update (a new time, Position, Theme): drawn again now. */
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        endsAt = intent.getLongExtra("endsAt", 0);
+        theme = intent.getStringExtra("theme");
+        sunrise = intent.getLongExtra("sunrise", 0);
+        sunset = intent.getLongExtra("sunset", 0);
+        int gravity = GRAVITY[intent.getIntExtra("place", 0) % PLACES];
+        if (layout.gravity != gravity) {
+            layout.gravity = gravity;
+            getSystemService(WindowManager.class).updateViewLayout(view, layout);
+        }
         handler.removeCallbacks(tick);
         tick.run();
         return START_NOT_STICKY;

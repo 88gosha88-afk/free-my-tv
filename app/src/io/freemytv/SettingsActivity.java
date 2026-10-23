@@ -137,8 +137,8 @@ public class SettingsActivity extends Activity {
         private static final int PICK_VISIBLE = 9;
         private static final float LIST_X = 1000, LIST_R = 1824, LIST_TOP = 186, ROW_GAP = 8, CHOICE_H = 104;
         // The main menu: eight rows, then the comparison, the picks (with the Watchmode credit) and two notices, all on
-        // one 1080 px screen.
-        private static final float MAIN_TOP = 140, ROW_H = 62, MAIN_GAP = 4;
+        // one 1080 px screen: the rows share the 462 px that seven took.
+        private static final float MAIN_TOP = 140, ROW_H = 53.75f, MAIN_GAP = 4;
         private static final int AMBER = 0xFFFFC266, INK = 0xFF1C1C1E;
 
         private final SettingsActivity activity;
@@ -167,6 +167,7 @@ public class SettingsActivity extends Activity {
         private boolean running, okDown, backDown, wasBusy;
         private StaticLayout errorLayout;   // the last error, wrapped (rebuilt only when it changes)
         private Toast whyToast;   // why the focused option is unavailable
+        private String[] whyRows;  // each row's reason, worked out once per screen (null: again on the next frame)
         private String errorShown;
         private final Spoken spoken;
         private long startedAt, lastNanos, pendingAt, lastSky;
@@ -185,6 +186,7 @@ public class SettingsActivity extends Activity {
                 if (nowBusy) pendingAt = 0;
                 // A switch just ended: TalkBack reads how it went (the newest notice).
                 JSONArray notices = state.optJSONArray("notices");
+                if (wasBusy != nowBusy) whyRows = null;   // a switch began or ended: what needs Free My TV mode changes
                 if (wasBusy && !nowBusy && notices != null && notices.length() > 0) {
                     JSONObject newest = notices.optJSONObject(0);
                     if (newest != null) announceForAccessibility(newest.optString("text"));
@@ -303,6 +305,7 @@ public class SettingsActivity extends Activity {
         void resume() {
             if (running) return;
             running = true;
+            whyRows = null;
             startedAt = SystemClock.uptimeMillis();
             lastNanos = 0;
             handler.post(poll);
@@ -614,18 +617,17 @@ public class SettingsActivity extends Activity {
 
         boolean onKey(KeyEvent e) {
             boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+            whyRows = null;   // a key can change the screen, or what a row needs
             switch (e.getKeyCode()) {
                 case KeyEvent.KEYCODE_DPAD_UP:
                     if (down && focus > 0) focus--;
                     else if (down && scrolling() && pickScroll > 0) pickScroll--;
-                    if (down) tellWhy();
                     invalidate();
                     spoken.focusMoved();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                     if (down && focus < rowCount() - 1) focus++;
                     else if (down && scrolling() && pickScroll + rowCount() < listSize()) pickScroll++;
-                    if (down) tellWhy();
                     invalidate();
                     spoken.focusMoved();
                     return true;
@@ -761,13 +763,21 @@ public class SettingsActivity extends Activity {
 
         /** Why row `i` can't be used here, for the person to read; null where it works. */
         private String unavailable(int i) {
-            if (i < 0 || i >= rowCount()) return null;
-            if (screen == HOME_SETTINGS && i >= COIN_ROWS && !Prefs.quotes()) return Ui.tr("Turn on the Quotes widget to pick its coins.");
-            String need = need(i);
-            return need == null ? null : Capabilities.missing(getContext(), need);
+            int n = rowCount();
+            if (i < 0 || i >= n) return null;
+            if (whyRows == null || whyRows.length != n) {
+                whyRows = new String[n];
+                for (int r = 0; r < n; r++) {
+                    String need = need(r);
+                    whyRows[r] = screen == HOME_SETTINGS && r >= COIN_ROWS && !Prefs.quotes()
+                            ? Ui.tr("Turn on the Quotes widget to pick its coins.")
+                            : need == null ? null : Capabilities.missing(getContext(), need);
+                }
+            }
+            return whyRows[i];
         }
 
-        /** Says why the focused row is unavailable, as a toast (when focus lands on it, and on OK); false if it isn't. */
+        /** OK on an unavailable row: a toast says why; false if it isn't unavailable. */
         private boolean tellWhy() {
             String why = unavailable(focus);
             if (whyToast != null) whyToast.cancel();
@@ -832,7 +842,8 @@ public class SettingsActivity extends Activity {
                 case P_SLEEP:
                     list.add(new String[] {"0", Ui.tr("Off")});
                     for (int m : new int[] {5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240}) {
-                        list.add(new String[] {String.valueOf(m), Ui.trf("{n} min", "n", m)});
+                        list.add(new String[] {String.valueOf(m), m < 60 ? Ui.trf("{n} min", "n", m)
+                                : m % 60 == 0 ? Ui.trf("{n} h", "n", m / 60) : Ui.trf("{h} h {m} min", "h", m / 60, "m", m % 60)});
                     }
                     int left = SleepTimer.minutesLeft(c);
                     openChoices(PICK_SLEEP, list, String.valueOf(left));
@@ -960,6 +971,7 @@ public class SettingsActivity extends Activity {
                 case 2: {
                     int at = java.util.Arrays.asList(THEMES).indexOf(Prefs.theme());
                     Prefs.setTheme(THEMES[(at + dir + THEMES.length) % THEMES.length]);
+                    SleepOverlay.update(getContext());   // the pill's glass follows
                     break;
                 }
                 case PHOTOS_ROW:
