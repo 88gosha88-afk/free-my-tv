@@ -49,8 +49,7 @@ final class Scene {
     private final Paint softPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
     private final Paint sheenPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix softMatrix = new Matrix();
-    private final Matrix sheenMatrix = new Matrix();
-    private android.graphics.LinearGradient sheen;
+    private final RectF sheenRect = new RectF();
     private int[] softPxA, softPxB, softPxFrost;         // reused pixel buffers
     private Bitmap softA, softB, softFrost;               // reused small bitmaps
     private BitmapShader softShaderA, softShaderB, softShaderFrost;   // remade after each setPixels (a shader keeps the pixels as they were)
@@ -80,11 +79,8 @@ final class Scene {
         flatRim.setColor(0x33FFFFFF);
         flatRim.setStrokeWidth(1.5f);
         if (glass == null) {
-            sheen = new android.graphics.LinearGradient(0, 0, 0, 1, new int[] {0x66FFFFFF, 0x1AFFFFFF, 0x05FFFFFF},
-                    new float[] {0, 0.45f, 1}, Shader.TileMode.CLAMP);
             sheenPaint.setStyle(Paint.Style.STROKE);
             sheenPaint.setStrokeWidth(1.5f);
-            sheenPaint.setShader(sheen);
         }
     }
 
@@ -94,6 +90,12 @@ final class Scene {
         lw = Math.max(1, Math.round(w / 4f));
         lh = Math.max(1, Math.round(h / 4f));
         auroraNode.setPosition(0, 0, lw, lh);
+        if (glass == null) {
+            // The sheen fades over a fixed height from each glass's top edge, drawn with a translate: a local matrix
+            // per glass would rebuild the native gradient on every draw on Android 8 to 12.
+            sheenPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, Math.max(1, h * 0.1f),
+                    new int[] {0x66FFFFFF, 0x1AFFFFFF, 0x05FFFFFF}, new float[] {0, 0.45f, 1}, Shader.TileMode.CLAMP));
+        }
         if (aurora != null) {
             aurora.setFloatUniform("res", w, h);
             aurora.setFloatUniform("layer", lw, lh);
@@ -235,7 +237,9 @@ final class Scene {
         if (alpha <= 0.004f) return;
         if (liquid == null) {
             if (imageGlass && softShaderA != null) {
-                bitmapGlass(c, r, radius, softShaderA, SW, SH, softShaderB, glassMix, tint, Math.max(0.5f, tintAlpha), lift, 1, specular, alpha);
+                // Mapped by what the copy covers: 270 / 8 = 33.75 rows, of which the bitmap holds 33.
+                bitmapGlass(c, r, radius, softShaderA, Backdrop.GW / (float) SOFT, Backdrop.GH / (float) SOFT, softShaderB,
+                        glassMix, tint, Math.max(0.5f, tintAlpha), lift, 1, specular, alpha);
             } else {
                 glass(c, r, radius, tint, Math.max(0.5f, tintAlpha), 0, 0, lift, 1, alpha);
             }
@@ -277,6 +281,11 @@ final class Scene {
         imageFrost = false;
         setFrostScale();
         advance(time);
+    }
+
+    /** True where the glass is drawn by shaders (Android 13+); without them a plain color needs no image pass. */
+    boolean shaded() {
+        return glass != null;
     }
 
     /** The current blurred image (so the bottom drawer can blur the background), or null with the aurora. */
@@ -332,7 +341,8 @@ final class Scene {
         if (alpha <= 0.004f) return;
         if (glass == null) {
             if (imageFrost && softShaderFrost != null) {
-                bitmapGlass(c, r, radius, softShaderFrost, SFW, SFH, null, 0, tint, Math.max(0.35f, tintAlpha), lift, body, 1, alpha);
+                bitmapGlass(c, r, radius, softShaderFrost, Backdrop.FW / (float) SOFT_FROST, Backdrop.FH / (float) SOFT_FROST, null, 0,
+                        tint, Math.max(0.35f, tintAlpha), lift, body, 1, alpha);
                 return;
             }
             if (body > 0) {
@@ -364,7 +374,7 @@ final class Scene {
      * what is really behind it; then the same tint as the flat fill, a faint lift, the rim and a sheen on the top
      * edge. The paints and matrices are reused: nothing is allocated here.
      */
-    private void bitmapGlass(Canvas c, RectF r, float radius, BitmapShader a, int aw, int ah, BitmapShader b, float mix,
+    private void bitmapGlass(Canvas c, RectF r, float radius, BitmapShader a, float aw, float ah, BitmapShader b, float mix,
                              int tint, float tintAlpha, float lift, float body, float specular, float alpha) {
         radius = Math.min(radius, Math.min(r.width(), r.height()) / 2);
         if (body > 0) {
@@ -380,11 +390,12 @@ final class Scene {
         c.drawRoundRect(r, radius, radius, flatRim);
         flatRim.setAlpha(0x33);
         if (specular > 0.001f) {
-            sheenMatrix.setScale(1, Math.max(1, r.height()));
-            sheenMatrix.postTranslate(0, r.top);
-            sheen.setLocalMatrix(sheenMatrix);
             sheenPaint.setAlpha(Math.round(255 * Math.min(1, specular) * alpha));
-            c.drawRoundRect(r, radius, radius, sheenPaint);
+            c.save();
+            c.translate(0, r.top);
+            sheenRect.set(r.left, 0, r.right, r.height());
+            c.drawRoundRect(sheenRect, radius, radius, sheenPaint);
+            c.restore();
         }
     }
 
@@ -395,9 +406,9 @@ final class Scene {
         return 0xFF000000 | (r << 16) | (g << 8) | bl;
     }
 
-    /** `shader` (a `bw` × `bh` bitmap) stretched over the whole screen, drawn inside the rounded rectangle. */
-    private void drawThrough(Canvas c, RectF r, float radius, BitmapShader shader, int bw, int bh, float alpha) {
-        softMatrix.setScale((float) w / bw, (float) h / bh);
+    /** `shader` (covering `bw` × `bh` of its bitmap's scale) stretched over the screen, inside the rounded rectangle. */
+    private void drawThrough(Canvas c, RectF r, float radius, BitmapShader shader, float bw, float bh, float alpha) {
+        softMatrix.setScale(w / bw, h / bh);
         softMatrix.postTranslate(-offX, -offY);
         shader.setLocalMatrix(softMatrix);
         softPaint.setShader(shader);
