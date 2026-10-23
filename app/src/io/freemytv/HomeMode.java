@@ -141,7 +141,9 @@ final class HomeMode {
         // app buttons (GLOBAL_BUTTON), hardware info, Amlogic system, settings, mic switch and launcher provider
         "com.onn.bluetoothconnect", "com.onn.btpairoverlay", "com.onn.updatenotification", "com.gretzky.GlobalKey",
         "com.gretzky.hwinfo", "com.droidlogic", "com.droidlogic.tv.settings", "com.droidlogic.mictoggle",
-        "com.droidlogic.launcher.provider", "com.droidlogic.android.tv.connecteddevices"));
+        "com.droidlogic.launcher.provider", "com.droidlogic.android.tv.connecteddevices",
+        // HY300 projectors (Hotack, Allwinner H713): keystone and projection settings, the HDMI player, Miracast receiver
+        "com.htc.htcsettings", "com.softwinner.awlivetv", "com.softwinner.miracastReceiver"));
 
     /**
      * Android's own pieces: with one of them off, a TV may not start again (a list that took the permission
