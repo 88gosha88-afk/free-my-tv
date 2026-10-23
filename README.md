@@ -112,7 +112,7 @@ The first values come from `config.properties`, created by the first build (Goog
 | `latitude`, `longitude` | Your city, for the weather and the sunset | New York |
 | `city` | The name on the weather card | `Weather` |
 | `hide_animation` | Leave cartoons and anime out of the picks | `false` |
-| `language` | `auto` (follows the TV), or a language with a [translation](#translations) (`en`, `pt`, `es`, `de`, `ru`, `fr`, `ja`…) on Google TV; `en`, `es`, `pt`, `ru` or `de` on LG and Samsung | `auto` |
+| `language` | `auto` (follows the TV), or a language with a [translation](#translations) (`en`, `pt`, `es`, `de`, `ru`, `fr`, `ja`…) | `auto` |
 | `show_crypto` | Show Binance crypto prices on home and screensaver | `true` |
 | `currency` | Crypto prices in `USD`, `EUR`, `BRL`… | `USD` |
 | `temperature` | `C`, `F` or `auto` | `auto` |
@@ -207,8 +207,8 @@ The website ([freemytv.io](https://freemytv.io)) is in [`docs/`](docs): plain HT
 
 ## Translations
 
-On Google TV, each language is one file, [`app/assets/i18n/<lang>.json`](app/assets/i18n), keyed by the English text
-in the code. *Automatic* follows the TV's language and uses any language that has a file (English otherwise); *Home
+On Google TV, LG and Samsung, each language is one file, [`app/assets/i18n/<lang>.json`](app/assets/i18n), keyed by the
+English text in the code. *Automatic* follows the TV's language and uses any language that has a file (English otherwise); *Home
 Settings* → *Language* lists them all. Today: English, Portuguese, Spanish, German, French, Italian, Dutch, Polish,
 Swedish, Danish, Norwegian, Finnish, Czech, Romanian, Turkish, Russian, Ukrainian, Greek, Japanese, Korean, Simplified
 Chinese, Hindi, Indonesian, Vietnamese and Thai. Portuguese, Spanish, German, Russian and Thai were translated by hand and are the
@@ -225,8 +225,7 @@ reference (fix them by hand); the others were machine-made, and corrections from
   category the language uses (Russian `"one:{n} сезон|few:{n} сезона|many:{n} сезонов|other:{n} сезона"`, Japanese
   just `"other:{n}シーズン"`), and Android's plural rules pick the one for each number.
 - **Limits:** right-to-left languages (Arabic, Hebrew, Persian) would need the layout mirrored, so they aren't there
-  yet. Chinese, Japanese, Korean and Hindi are drawn with the TV's system font (Inter has no such letters). The LG and
-  Samsung app has English, Portuguese, Spanish, German and Russian.
+  yet. Chinese, Japanese, Korean and Hindi are drawn with the TV's system font (Inter has no such letters).
 
 ## Privacy
 
