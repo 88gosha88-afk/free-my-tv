@@ -105,6 +105,9 @@ final class Spanish {
             case "Apple aerials": return "Vídeos de Apple";
             case "Picks' photos": return "Fotos de las sugerencias";
             case "Clock only": return "Solo el reloj";
+            case "Background": return "Fondo";
+            case "Apple photos": return "Fotos de Apple";
+            case "Gradient": return "Degradado";
             case "On": return "Activado";
             case "Off": return "Desactivado";
             case "Shelf": return "Estante";

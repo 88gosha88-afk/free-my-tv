@@ -624,9 +624,9 @@ public class SettingsActivity extends Activity {
 
         // MARK: - Home Settings and Remote Buttons
 
-        private static final String[] LANGUAGES = {"auto", "pt", "en", "es", "de", "ru"}, UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"}, SAVERS = {"aerial", "photos", "clock"};
+        private static final String[] LANGUAGES = {"auto", "pt", "en", "es", "de", "ru"}, UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"}, SAVERS = {"aerial", "photos", "clock"}, BACKGROUNDS = {"auto", "apple", "plain"};
         /** Home Settings: language, temperature, theme, weather, quotes, then one row per coin. */
-        private static final int CITY_ROW = 4, SAVER_ROW = 6, COIN_ROWS = 7;
+        private static final int CITY_ROW = 4, SAVER_ROW = 6, BACKGROUND_ROW = 7, COIN_ROWS = 8;
 
         private boolean dollar() {
             return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
@@ -641,6 +641,7 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Cidade", "City"));
             l.add(Ui.tr("Widget de cotações", "Quotes widget"));
             l.add(Ui.tr("Tela de descanso", "Screensaver"));
+            l.add(Ui.tr("Fundo", "Background"));
             l.add("Bitcoin");
             l.add("Ethereum");
             l.add("Solana");
@@ -664,6 +665,9 @@ public class SettingsActivity extends Activity {
             String saver = Prefs.screensaver();
             v[SAVER_ROW] = saver.equals("photos") ? Ui.tr("Fotos das sugestões", "Picks' photos")
                     : saver.equals("clock") ? Ui.tr("Só o relógio", "Clock only") : Ui.tr("Vídeos da Apple", "Apple aerials");
+            String background = Prefs.background();
+            v[BACKGROUND_ROW] = background.equals("apple") ? Ui.tr("Fotos da Apple", "Apple photos")
+                    : background.equals("plain") ? Ui.tr("Gradiente", "Gradient") : Ui.tr("Automático", "Automatic");
             // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
             for (int i = COIN_ROWS; i < v.length; i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
             return v;
@@ -741,6 +745,11 @@ public class SettingsActivity extends Activity {
                 case SAVER_ROW: {
                     int at = java.util.Arrays.asList(SAVERS).indexOf(Prefs.screensaver());
                     Prefs.setScreensaver(SAVERS[(at + dir + SAVERS.length) % SAVERS.length]);
+                    return;
+                }
+                case BACKGROUND_ROW: {
+                    int at = java.util.Arrays.asList(BACKGROUNDS).indexOf(Prefs.background());
+                    Prefs.setBackground(BACKGROUNDS[(at + dir + BACKGROUNDS.length) % BACKGROUNDS.length]);
                     return;
                 }
                 default:

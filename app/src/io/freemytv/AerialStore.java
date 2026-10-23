@@ -103,7 +103,7 @@ final class AerialStore {
      * finished clip and about repeated failures; clear it (null) when the screensaver stops.
      */
     synchronized void download(Callback cb) {
-        callback = cb;
+        if (cb != null) callback = cb;
         if (worker != null && worker.isAlive()) return;
         if (cached().size() >= KEEP) return;
         cancelled = false;

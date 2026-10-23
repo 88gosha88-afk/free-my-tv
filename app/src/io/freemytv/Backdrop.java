@@ -50,6 +50,11 @@ final class Backdrop {
     }
 
     static Backdrop make(Bitmap src, boolean forLight) {
+        return make(src, forLight, 0.82f, 0.74f);
+    }
+
+    /** `whitenFrost` and `whitenGlass` (light design): how white the background and the glass go (1 = white). */
+    static Backdrop make(Bitmap src, boolean forLight, float whitenFrost, float whitenGlass) {
         Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint photo = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
@@ -61,9 +66,9 @@ final class Backdrop {
             // Light design: everything comes from the photo without scrims.
             Bitmap wide = card(out, WIDE_W, WIDE_H), tall = card(out, TALL_W, TALL_H);
             int[] frost = reduce(out, FW, FH, 3, 3);
-            int[] light = whiten(frost.clone(), 0.82f);
+            int[] light = whiten(frost.clone(), whitenFrost);
             int[] glass = reduce(out, GW, GH, 2, 2);
-            int[] lightGlass = whiten(glass.clone(), 0.74f);
+            int[] lightGlass = whiten(glass.clone(), whitenGlass);
             int[] night = darken(frost.clone(), 0.76f);
             int[] nightGlass = darken(glass, 0.56f);
             out.recycle();

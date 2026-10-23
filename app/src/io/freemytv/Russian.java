@@ -112,6 +112,9 @@ final class Russian {
             case "Apple aerials": return "Видео Apple";
             case "Picks' photos": return "Фото подборок";
             case "Clock only": return "Только часы";
+            case "Background": return "Фон";
+            case "Apple photos": return "Фото Apple";
+            case "Gradient": return "Градиент";
             case "On": return "Вкл.";
             case "Off": return "Выкл.";
             case "Shelf": return "Избранные приложения";

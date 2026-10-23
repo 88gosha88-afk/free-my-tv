@@ -810,7 +810,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         heroSlide = dir;
         refreshHero(true);
         Backdrop b = recs.backdrop(currentPick());
-        if (b != null) showBackdrop(b);
+        if (b != null && followsPicks()) showBackdrop(b);
         spoken.focusMoved();
         return true;
     }
@@ -2621,10 +2621,27 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
         }
         for (Recs.Pick p : recs.wanted()) recs.backdrop(p);   // all three tabs preloaded: switching tabs is instant
-        Backdrop b = cards.isEmpty() ? null : recs.backdrop(cards.get(0));
-        if (cards.isEmpty() || b != null) showBackdrop(b);
+        refreshBackground();
         heroDirty = true;
         spoken.focusMoved();    // new picks under the focused card
+    }
+
+    /** Home Settings > Background: the first card's photo ("auto"), a still from an Apple aerial video, or the gradient. */
+    private boolean followsPicks() {
+        return Prefs.background().equals("auto") && !cards.isEmpty();
+    }
+
+    private void refreshBackground() {
+        String background = Prefs.background();
+        if (background.equals("plain")) {
+            showBackdrop(null);
+        } else if (background.equals("apple") || cards.isEmpty()) {
+            // Without a still yet (or any clip on disk), the gradient shows and the still fades in once it is ready.
+            showBackdrop(Ambient.get(getContext()).backdrop(background.equals("apple"), this::updatePicks));
+        } else {
+            Backdrop b = recs.backdrop(cards.get(0));
+            if (b != null) showBackdrop(b);
+        }
     }
 
     private void selectTab(int index) {

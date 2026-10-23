@@ -89,6 +89,14 @@ final class Prefs {
 
     static void setScreensaver(String v) { put("screensaver", v); }
 
+    /** The home screen's background: "auto" (the first pick's photo; without picks, an Apple aerial still), "apple" or "plain". */
+    static String background() {
+        String v = sp().getString("background", "auto");
+        return v.equals("apple") || v.equals("plain") ? v : "auto";
+    }
+
+    static void setBackground(String v) { put("background", v); }
+
     // MARK: - City
 
     static String city() { return sp().getString("city", Config.CITY).trim(); }

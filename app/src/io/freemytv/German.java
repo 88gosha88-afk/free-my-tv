@@ -113,6 +113,9 @@ final class German {
             case "Apple aerials": return "Apple-Videos";
             case "Picks' photos": return "Fotos der Empfehlungen";
             case "Clock only": return "Nur die Uhr";
+            case "Background": return "Hintergrund";
+            case "Apple photos": return "Apple-Fotos";
+            case "Gradient": return "Verlauf";
             case "On": return "An";
             case "Off": return "Aus";
             case "Shelf": return "Leiste";
