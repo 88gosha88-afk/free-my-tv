@@ -420,12 +420,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   color: #FFF;
   opacity: 0;
   visibility: hidden;
+  pointer-events: none; /* while it fades out, the pointer goes to what's under it, not to its rows */
   -webkit-transform: scale(1.04);
   transform: scale(1.04);
   -webkit-transition: opacity 0.24s, -webkit-transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s 0.3s;
   transition: opacity 0.24s, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s 0.3s;
 }
-.sheet.open { opacity: 1; visibility: visible; -webkit-transform: none; transform: none; -webkit-transition-delay: 0s; transition-delay: 0s; }
+.sheet.open { opacity: 1; visibility: visible; pointer-events: auto; -webkit-transform: none; transform: none; -webkit-transition-delay: 0s; transition-delay: 0s; }
 .sheet h2 { position: absolute; left: 0; right: 0; top: 84px; margin: 0; text-align: center; font-size: 40px; font-weight: 600; }
 
 #apps .grid { position: absolute; left: 0; top: 0; width: 1920px; -webkit-transition: -webkit-transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
@@ -448,7 +449,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .cell.focus .face { -webkit-transform: scale(1.08); transform: scale(1.08); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 255, 255, 0.4); }
 .cell.focus .label { color: #FFF; }
 
-#settings .box, #shelfedit .box {
+#settings .box, #shelfedit .box, #langpick .box {
   position: absolute;
   left: 560px;
   top: 150px;
@@ -468,6 +469,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .box .row.focus { background: rgba(255, 255, 255, 0.13); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14); }
 .box .row .value { position: absolute; right: 24px; top: 0; color: rgba(255, 255, 255, 0.92); font-weight: 500; }
 .box .row .value .chev { color: rgba(255, 255, 255, 0.35); margin: 0 10px; }
+.box .row .value .sym { width: 26px; height: 26px; vertical-align: -3px; }
 .box .row.dim { color: rgba(255, 255, 255, 0.4); }
 .box .hint { padding: 14px 18px 0; font-size: 22px; font-weight: 500; color: rgba(255, 255, 255, 0.5); }
 .toggle { position: absolute; right: 24px; top: 13px; width: 78px; height: 44px; border-radius: 22px; background: #3A3D45; -webkit-transition: background-color 0.14s; transition: background-color 0.14s; }
