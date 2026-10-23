@@ -105,7 +105,9 @@ final class HomeData {
             try {
                 return get(host + pricesPath());
             } catch (IOException e) {
-                failed = e;
+                // Binance.US has only dollar pairs: its error counts only where Binance.com refuses the US (HTTP 451).
+                // After a timeout or a 5xx there, its HTTP 400 would put the prices in dollars for good.
+                if (failed == null || "HTTP 451".equals(failed.getMessage())) failed = e;
                 // A pair Binance doesn't list (HTTP 400) isn't a refusal: the caller falls back to dollars instead.
                 if ("HTTP 400".equals(e.getMessage())) break;
             }
