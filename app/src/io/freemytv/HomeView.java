@@ -1356,7 +1356,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         // At night that shadow is lost on the dark glass: the focused app casts the same one in light, a soft glow.
         float glow = fc * night;
         if (glow > 0.01f) {
-            shadowDeep.setColor(Ui.alpha(0xFFFFFFFF, 0.38f * glow));
+            shadowDeep.setColor(Ui.alpha(0xFFFFFFFF, 0.33f * glow));
             shadows.draw(c, tmp, r0, DEEP_BLUR * k, shadowDeep);
         }
         c.restore();
