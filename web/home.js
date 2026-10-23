@@ -103,10 +103,13 @@
   var lifted = {};   // icon url -> {src, bg: [r, g, b], ink: luminance histogram} or false (keep the icon as it is)
   var LIFT_SIZE = 240;
 
-  /** Relative luminance (0-1) of an sRGB color. */
+  // sRGB (0-255) to linear light, computed once: lift() needs it for every pixel, and old TVs are slow at Math.pow.
+  var LINEAR = [];
+  for (var li = 0; li < 256; li++) LINEAR[li] = li <= 10 ? li / 255 / 12.92 : Math.pow((li / 255 + 0.055) / 1.055, 2.4);
+
+  /** Relative luminance (0-1) of an sRGB color (whole numbers, as read from the canvas). */
   function luminance(r, g, b) {
-    function lin(c) { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
-    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return 0.2126 * LINEAR[r] + 0.7152 * LINEAR[g] + 0.0722 * LINEAR[b];
   }
 
   function rgbOf(color) {
