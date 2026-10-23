@@ -44,8 +44,8 @@ before you do it, and let them do the taps on the TV.
 7. **Tell them what the switch does** before they make it: the home screen and screensaver change, a short list of
    promo apps is turned off (never uninstalled), and *Original* brings it all back. On TCL, the remote's Netflix,
    YouTube and Prime buttons keep working through a small accessibility service that only reads those buttons
-   (*Free My TV* → *Remote Buttons* picks what each opens); *Original* turns it off. On Xiaomi TVs the remote has no
-   Home button: the same service makes its Mi button open Free My TV instead of PatchWall.
+   (*Free My TV* → *Remote Buttons* picks what each opens); *Original* turns it off. On Xiaomi TVs whose remote has no
+   Home button, the same service makes its Mi button open Free My TV instead of PatchWall.
 8. **They switch on the TV:** *Free My TV* → *Home Screen* → *Free My TV*. The app uses the TV's own ADB on
    127.0.0.1 with its own key, so the TV asks once more to allow debugging. Don't switch modes from the computer.
    If the TV's Wi-Fi was saved during its first setup, the switch stops before changing anything and asks them to
@@ -212,7 +212,8 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   the key to the TV. Sony ships its own Apple TV build, `com.apple.atve.sony.appletv`.
   Xiaomi projectors made by Formovie (Fengmi; L1, MediaTek, Google TV 14 tested) send the same `KEYCODE_STEM_1` for
   Netflix (`RemoteKeys.STEM_NETFLIX`); their YouTube button goes to MediaTek's `GlobalKeyReceiver` and stays with the system.
-  Xiaomi TVs (MiTV-MSSP3, MediaTek, Android TV 9 tested) have no Home button: the remote's Mi button sends
+  Some Xiaomi TVs (MiTV-MSSP3, MediaTek, Android TV 9 tested) have no Home button on the remote (`RemoteKeys.XIAOMI`
+  matches only the TVs, `MiTV-M…` models, not the Mi Box or Mi TV Stick): the Mi button sends
   `KEYCODE_BUTTON_4`, a global key that `com.xiaomi.android.tvsetup.partnercustomizer`'s `GlobalKeyReceiver` turns into
   PatchWall (`com.mitv.tvhome.atv`), never the home activity, so without the service there is no way back to Free My
   TV, and PatchWall's All Apps opens the disabled `tvlauncher`. `Prefs.KEY_MI` opens our home screen by default
