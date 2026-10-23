@@ -31,7 +31,7 @@ import javax.net.ssl.TrustManagerFactory;
  */
 final class AerialStore {
     static final int KEEP = 3, MAX_FILES = 6;
-    private static final long MIN_FREE = 700L << 20;
+    private static final long MIN_FREE = 400L << 20;
 
     interface Callback {
         /** A clip finished downloading (on the main thread). */
@@ -147,9 +147,10 @@ final class AerialStore {
                 }
             }
             if (next == null) return;       // every clip from there is on disk (or failed): nothing more to fetch
+            if (dir.getUsableSpace() < MIN_FREE) makeRoom(place);
             if (dir.getUsableSpace() < MIN_FREE) {
-                AppLog.w("aerials: not enough free space");
-                post(false);
+                AppLog.w("aerials: not enough free space (" + (dir.getUsableSpace() >> 20) + " MB free)");
+                if (cached(place).isEmpty()) post(false);   // something to play already: no need to give up
                 return;
             }
             if (fetch(next, fileOf(next))) {
@@ -163,6 +164,30 @@ final class AerialStore {
                     return;
                 }
             }
+        }
+    }
+
+    /**
+     * Frees disk for the next clip: half-done downloads of other places go first, then the oldest finished clips from
+     * other places (the ones for the place that is wanted stay).
+     */
+    private void makeRoom(String place) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (!f.getName().endsWith(".part")) continue;
+                boolean wanted = false;
+                for (Aerials.Clip clip : Aerials.all(app)) {
+                    if ((clip.file() + ".part").equals(f.getName()) && clip.isFrom(place)) wanted = true;
+                }
+                if (!wanted) f.delete();
+            }
+        }
+        List<Cached> all = cached();
+        java.util.Collections.sort(all, (x, y) -> Long.compare(x.file.lastModified(), y.file.lastModified()));
+        for (Cached c : all) {
+            if (dir.getUsableSpace() >= MIN_FREE) break;
+            if (!c.clip.isFrom(place)) c.file.delete();
         }
     }
 
