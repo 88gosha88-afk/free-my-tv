@@ -132,7 +132,9 @@ TizenBrew Installer takes the first `.wgt` of the latest GitHub release, so ever
 `FreeMyTV-tizen.wgt`: built with `--generic` (no config.properties: no key, the city from the time zone) and signed
 with a Tizen certificate (`--sign`), which 2017-2022 TVs install as it is; on 2023+ TVs the installer signs it again
 with the person's Samsung certificate. Sign every release with the same author certificate: older TVs refuse an
-update signed by another. `python3 webos/build.py --generic` makes the LG `.ipk` that goes along.
+update signed by another. `python3 webos/build.py --generic` makes the LG `.ipk` that goes along. Then
+`python3 tools/homebrew_repo.py <the uploaded FreeMyTV-webos.ipk>` writes `docs/webos/apps.json`, the webOS Homebrew
+Channel repository (https://freemytv.io/webos/apps.json, with that file's SHA-256): commit it with the release.
 
 ## Adapting it to another TV
 
