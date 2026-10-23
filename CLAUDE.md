@@ -32,7 +32,9 @@ before you do it, and let them do the taps on the TV.
    The same goes for the optional `watchmode_key` (free, watchmode.com; makes picks open the title's page): theirs, secret, only in `config.properties`.
 5. **Build:** `./build.sh` → `FreeMyTV.apk`. Keep `freemytv.keystore`: updates must be signed with the same key.
 6. **Install:** `adb connect <IP>:5555`. The TV asks *Allow USB debugging?*: tell them to accept and tick *Always
-   allow*. Then `adb install -r FreeMyTV.apk`. On TCL, also `adb shell "appops set io.freemytv AUTO_START allow || appops set io.freemytv APP_AUTO_START allow"`
+   allow*. Then `adb install -r FreeMyTV.apk`. If it hangs, Google Play Protect is asking on the TV (Android 14:
+   *Risky app blocked*, "built for an older version of Android", since targetSdk is 33): they choose *More details* →
+   *Install anyway* (updates don't ask again). On TCL, also `adb shell "appops set io.freemytv AUTO_START allow || appops set io.freemytv APP_AUTO_START allow"`
    (some firmware calls the operation `APP_AUTO_START`; this tries both):
    TCL's `TclAppBoot` blocks background jobs by default, so the switch (and the watchdog) never run. The log shows
    `forbid bind service ... ModeJob`. Some TCL firmware has neither (a 2024 MediaTek Google TV, Android 14, has no

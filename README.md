@@ -60,6 +60,8 @@ About ten minutes. You need a Google TV or Android TV (Android 8 or newer) and a
    adb connect 192.168.1.50:5555
    adb install -r FreeMyTV.apk
    ```
+   If the install seems stuck, look at the TV: on Android 14, Google Play Protect may hold it with *Risky app blocked* ("built for an older version of Android"), since Free My TV targets Android 13. Choose *More details* → *Install anyway*. Updates don't ask again.
+
    Chromecast with Google TV on Android 14 keeps port 5555 closed even with USB debugging on: turn on *Wireless debugging* (Developer options), pair with `adb pair <address:port> <code>`, then run `adb tcpip 5555` over that connection. Port 5555 closes again at every restart, so after one, *Original*, the watchdog and the boot check can't reach ADB until you run `adb tcpip 5555` again (the pairing stays).
 
    On TCL TVs, also let it run in the background (TCL blocks it by default, and the switch never starts):
