@@ -309,6 +309,84 @@ var TV = (function () {
     }
   }
 
+  // MARK: - About this TV
+
+  /** done({model, firmware, system, version, ip}), with '' for what the TV doesn't tell. */
+  function about(done) {
+    var out = {model: '', firmware: '', system: '', version: '', ip: ''}, left = 1, sent = false;
+    function wait() { left++; }
+    function finish() {
+      if (--left > 0 || sent) return;
+      sent = true;
+      clearTimeout(timer);
+      done(out);
+    }
+    var timer = setTimeout(function () { left = 1; finish(); }, 4000);   // a service that never answers doesn't hold the rest
+
+    if (webos) {
+      // The services LG's webOSTV.js reads for webOS.deviceInfo, and its public connection manager.
+      wait();
+      luna('luna://com.webos.service.tv.systemproperty/getSystemInfo', {keys: ['modelName', 'firmwareVersion', 'sdkVersion']}, function (res) {
+        if (res) {
+          out.model = res.modelName || '';
+          out.firmware = res.firmwareVersion || '';
+          if (!out.system && res.sdkVersion) out.system = 'webOS ' + res.sdkVersion;
+        }
+        finish();
+      });
+      wait();
+      luna('luna://com.webos.service.systemservice/osInfo/query', {parameters: ['webos_release']}, function (res) {
+        if (res && res.webos_release) out.system = 'webOS ' + res.webos_release;
+        finish();
+      });
+      wait();
+      luna('luna://com.palm.connectionmanager/getStatus', {}, function (res) {
+        if (res) {
+          var wired = res.wired || {}, wifi = res.wifi || {};
+          if (wired.state === 'connected' && wired.ipAddress) out.ip = wired.ipAddress;
+          else if (wifi.state === 'connected' && wifi.ipAddress) out.ip = wifi.ipAddress;
+        }
+        finish();
+      });
+      wait();
+      // The app's own version: its appinfo.json, beside index.html.
+      var x = new XMLHttpRequest();
+      x.onreadystatechange = function () {
+        if (x.readyState !== 4) return;
+        try { out.version = JSON.parse(x.responseText).version || ''; } catch (e) {}
+        finish();
+      };
+      try { x.open('GET', 'appinfo.json', true); x.send(); } catch (e) { finish(); }
+    } else if (samsung) {
+      var info = window.tizen.systeminfo;
+      try { out.model = info.getCapability('http://tizen.org/system/model_name') || ''; } catch (e) {}
+      try { out.system = 'Tizen ' + info.getCapability('http://tizen.org/feature/platform.version'); } catch (e) {}
+      try { out.version = window.tizen.application.getCurrentApplication().appInfo.version || ''; } catch (e) {}
+      var property = function (name, got) {
+        wait();
+        try {
+          info.getPropertyValue(name, function (v) { got(v); finish(); }, function () { finish(); });
+        } catch (e) {
+          finish();
+        }
+      };
+      // BUILD's buildVersion is the firmware (T-KTMDEUC-1250.4); its model is the panel's (UN55NU7100) where model_name is a code.
+      property('BUILD', function (v) {
+        if (v.buildVersion) out.firmware = v.buildVersion;
+        if (v.model) out.model = v.model;
+      });
+      property('ETHERNET_NETWORK', function (v) {
+        if (v.status === 'ON' && v.ipAddress) out.ip = v.ipAddress;
+      });
+      property('WIFI_NETWORK', function (v) {
+        if (v.status === 'ON' && v.ipAddress && !out.ip) out.ip = v.ipAddress;
+      });
+    } else {
+      out = {model: 'OLED55C1', firmware: '03.33.85', system: 'webOS 6.0', version: 'preview', ip: '192.168.1.50'};
+    }
+    finish();
+  }
+
   // MARK: - The TV, whichever it is
 
   return {
@@ -398,6 +476,9 @@ var TV = (function () {
       if (samsung) samsungSettings(done);
       else this.launch('com.palm.app.settings', null, done);
     },
+
+    /** The TV's model, firmware, system, IP address and this app's version, for About this TV. */
+    about: about,
 
     /** LG: keeps the TV's screensaver away while ours will take over (`hold` says when). */
     holdScreenSaver: holdScreenSaver,

@@ -292,11 +292,11 @@
 
   // MARK: - Focus
 
-  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit', LANG: 'lang'};
+  var Z = {TOP: 'top', CARDS: 'cards', SHELF: 'shelf', DRAWER: 'drawer', APPS: 'apps', SETTINGS: 'settings', EDIT: 'edit', LANG: 'lang', ABOUT: 'about'};
   var st = {zone: Z.SHELF, top: 0, tab: 0, card: 0, shelf: 0, drawer: 0, grid: 0, row: 0, edit: 0, lang: 0};
   var cards = [];
 
-  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT || st.zone === Z.LANG; }
+  function sheetOpen() { return st.zone === Z.APPS || st.zone === Z.SETTINGS || st.zone === Z.EDIT || st.zone === Z.LANG || st.zone === Z.ABOUT; }
 
   function updateFocus() {
     var i, list;
@@ -667,6 +667,7 @@
     setClass($('settings'), 'open', false);
     setClass($('shelfedit'), 'open', false);
     setClass($('langpick'), 'open', false);
+    setClass($('about'), 'open', false);
     langHint = null;
     st.zone = Z.SHELF;
     updateFocus();
@@ -700,6 +701,7 @@
       })(i);
     }
     rows.push({label: tr('Shelf'), value: '›', step: function (d) { if (d >= 0) openShelfEdit(); }});
+    rows.push({label: tr('About this TV'), value: '›', about: true, step: function (d) { if (d >= 0) openAbout(); }});
     rows.push({label: tr('TV Settings'), value: '›', step: function (d) { if (d >= 0) tvSettings(); }});
     return rows;
   }
@@ -793,6 +795,40 @@
     }
     openSettings();
     for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].language) st.row = i;
+    updateFocus();
+  }
+
+  // MARK: - About this TV: what to quote when reporting a problem, without LG's or Samsung's slow menus
+
+  function renderAbout(info) {
+    var box = $('about').firstChild;
+    box.innerHTML = '';
+    el('div', 'title', box, tr('About this TV'));
+    var list = el('div', 'list', box), holder = el('div', 'rows', list);
+    var rows = [
+      [tr('Model'), info && info.model], [tr('Firmware'), info && info.firmware], [tr('System'), info && info.system],
+      [tr('IP address'), info && info.ip], [tr('Time zone'), TV.zone()], ['Free My TV', info && info.version]
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var row = el('div', 'row', holder, rows[i][0]);
+      el('span', 'value', row, info ? rows[i][1] || tr('Unavailable') : '…');
+    }
+    el('div', 'hint', box, tr('Back closes.'));
+  }
+
+  function openAbout() {
+    setClass($('settings'), 'open', false);
+    st.zone = Z.ABOUT;
+    renderAbout(null);
+    setClass($('about'), 'open', true);
+    updateFocus();
+    TV.about(function (info) { if (st.zone === Z.ABOUT) renderAbout(info); });
+  }
+
+  function closeAbout() {
+    setClass($('about'), 'open', false);
+    openSettings();
+    for (var i = 0; i < rowsNow.length; i++) if (rowsNow[i].about) st.row = i;
     updateFocus();
   }
 
@@ -906,6 +942,9 @@
       case Z.LANG:
         closeLanguages(true);
         return;
+      case Z.ABOUT:
+        closeAbout();
+        return;
     }
   }
 
@@ -967,8 +1006,9 @@
   }
 
   function back() {
-    if (st.zone === Z.EDIT) { setClass($('shelfedit'), 'open', false); openSettings(); st.row = rowsNow.length - 2; updateFocus(); return; }
+    if (st.zone === Z.EDIT) { setClass($('shelfedit'), 'open', false); openSettings(); st.row = rowsNow.length - 3; updateFocus(); return; }
     if (st.zone === Z.LANG) { closeLanguages(false); return; }
+    if (st.zone === Z.ABOUT) { closeAbout(); return; }
     if (sheetOpen()) { closeSheets(); return; }
     if (st.zone === Z.DRAWER) { closeDrawer(); return; }
     if (st.zone !== Z.SHELF && shelf.length) { st.zone = Z.SHELF; updateFocus(); return; }
@@ -978,7 +1018,7 @@
   /** The pointer focuses what it's over (the Magic Remote, or a mouse when previewing). */
   function hover(node, zone, index) {
     node.onmouseover = function () {
-      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG))) return;
+      if (saverOn || (sheetOpen() !== (zone === Z.APPS || zone === Z.SETTINGS || zone === Z.EDIT || zone === Z.LANG || zone === Z.ABOUT))) return;
       if (zone === Z.DRAWER && st.zone !== Z.DRAWER) return;
       if (zone !== Z.DRAWER && st.zone === Z.DRAWER && zone !== Z.SHELF) return;
       if (zone === Z.SHELF && st.zone === Z.DRAWER) closeDrawer();
