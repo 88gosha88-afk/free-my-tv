@@ -173,7 +173,8 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
 **Uninstalled while in Free My TV mode?** The apps it turned off stay off. Bring them back with
 `adb shell pm enable <package>` (the `DEBLOAT` list and the stock home screen), then
 `adb shell cmd package set-home-activity <stock home activity>` and
-`adb shell settings put secure screensaver_components <stock screensaver>`.
+`adb shell settings put secure screensaver_components <stock screensaver>`. On an HY300 with JmLauncher, also
+`adb shell setprop persist.sys.home.selectpkg ''`.
 
 ## The code
 
@@ -246,6 +247,12 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   they resolve. Opening Miracast moves the Wi-Fi to Wi-Fi Direct: adb drops and asks to be allowed again. Nothing opens
   a passthrough input there; Allwinner's `com.softwinner.awlivetv` does, but always on HDMI 1 (the one real port of
   the three the board lists), so `inputs` keeps only HDMI 1.
+  Other HY300s (Amlogic txhd2, Android 13 tested; the build claims to be a Google `redfin`, model `t950s_be311`) have
+  the same HTC home screen, but the Home button goes to JmLauncher (`com.jm.jmlauncher`), which ignores the default
+  home: it opens the package in `persist.sys.home.selectpkg`, else the HTC one, and with that off and the property
+  empty, a black screen. Their adb shell runs as root, so the switch sets the property (`HomeMode.JM_HOME`) and only
+  then turns the HTC home off; Original and the watchdog put both back. Wireless debugging's port changes and turns
+  itself off, but adb also listens on 5555 there.
 - After any change, `./build.sh` must end with `Built FreeMyTV.apk`.
 - LG and Samsung (`web/`): plain ES5 JavaScript and CSS without variables, grid or backdrop-filter, since older TVs
   (webOS 3 and 4, Tizen 3) run a Chromium from 2015 to 2017; only transform and opacity animate. `web/tv.js` is the
