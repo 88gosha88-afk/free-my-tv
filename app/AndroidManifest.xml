@@ -45,10 +45,11 @@
         <package android:name="com.google.android.tv" />
         <package android:name="com.mediatek.wwtv.tvcenter" />
         <package android:name="com.sony.dtv.tvx" />
-        <!-- HY300 projectors: keystone and Miracast (drawer shortcuts), Allwinner's player for HDMI -->
+        <!-- HY300 projectors: keystone and Miracast (drawer shortcuts), Allwinner's player for HDMI; MIUI TV's source player -->
         <package android:name="com.htc.htcsettings" />
         <package android:name="com.softwinner.miracastReceiver" />
         <package android:name="com.softwinner.awlivetv" />
+        <package android:name="com.xiaomi.mitv.tvplayer" />
         <package android:name="com.amazon.tv.livetv" />
         <package android:name="com.amazon.mediatek.livetv" />
         <intent>

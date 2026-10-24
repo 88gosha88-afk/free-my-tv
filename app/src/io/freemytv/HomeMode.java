@@ -130,11 +130,12 @@ final class HomeMode {
         "com.mediatek.overlay.tvsettings", "com.homwee.overlay.tvservice", "com.homwee.synckey", "com.homwee.upgrade",
         "com.homwee.dmt.upgrade", "com.homwee.factory", "com.homwee.chinstallapk", "com.homwee.chtvmanager",
         "com.mstar.android.tv.disclaimercustomization",
-        // Xiaomi (MediaTek): system service, remote pairing, live TV, quick settings, child lock, updates, casting
+        // Xiaomi (MediaTek): system service, remote pairing, live TV, quick settings, child lock, updates, casting, HDMI player (MIUI TV)
         "mitv.service", "com.mi.bluetooth", "com.mitv.livetv.ci_mediatek", "com.xiaomi.tvqs.overseas",
         "com.mitv.tvlock", "com.xiaomi.mitv.updateservice", "com.xiaomi.android.tvsetup.partnercustomizer",
         "com.mitv.overseaservice", "com.xiaomi.mitv.tvmanager", "com.xiaomi.wfdsinkhelperservice",
         "com.mitv.milinkservice", "com.xiaomi.mitv.smartshare", "android.autoinstalls.config.xiaomi.amelie",
+        "com.xiaomi.mitv.tvplayer",
         // Skyworth (MediaTek): live TV, remote pairing and keys, setup, service menu, casting, OLED care, boot
         "com.smartdevice.livetv", "com.smartdevice.livetv.overlay_SANLUX", "com.smartdevice.bleconnectservice",
         "com.smartdevice.duplebluetooth", "com.smartdevice.myapp", "com.smartdevice.setupwraith",
