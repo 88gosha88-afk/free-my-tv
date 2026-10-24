@@ -102,7 +102,7 @@ final class Recs {
         SERVICE_NAME.put("oneplay", "Oneplay");
     }
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
-    static final String REGION = Config.TMDB_REGION.trim().toUpperCase(Locale.ROOT);
+    static final String REGION = Place.region();
     /** The errors the settings say in words: TMDB lists none of the TV's apps in REGION, or the TV has none we know. */
     static final String NO_APPS = "none of the TV's streaming services are on TMDB";
     static final String NO_KNOWN_APPS = "none of the TV's streaming apps can give picks";

@@ -130,6 +130,14 @@ screen stays. Two ways:
 
 ## Releases
 
+Every release carries `FreeMyTV.apk` for Google TV and Android TV, built with `./build.sh --generic` (no
+config.properties: no key, and `Place` takes the city, the currency and the region from the TV's time zone through
+`app/assets/zones.json`) and signed with the project's release key, which lives only on the owner's Mac
+(`~/.freemytv/release.keystore`, its password in the login Keychain as `freemytv-release-apk`):
+`FREEMYTV_KEYSTORE=~/.freemytv/release.keystore FREEMYTV_KEYSTORE_PASS="$(security find-generic-password -s
+freemytv-release-apk -w)" ./build.sh --generic`. Sign every release with that key: Android refuses an update signed
+by another, and people who built their own must uninstall it before installing the release.
+
 TizenBrew Installer takes the first `.wgt` of the latest GitHub release, so every release carries
 `FreeMyTV-tizen.wgt`: built with `--generic` (no config.properties: no key, the city from the time zone) and signed
 with a Tizen certificate (`--sign`), which 2017-2022 TVs install as it is; on 2023+ TVs the installer signs it again
@@ -212,6 +220,8 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   No right-to-left languages yet (the layout isn't mirrored); CJK and Devanagari use the system font.
   Comments in English, short, only where the why isn't obvious.
 - Settings come from `config.properties` through the generated `out/gen/io/freemytv/Config.java` (never edit that).
+  Built with `--generic`, the place values are empty and `Place` fills them from the TV's time zone
+  (`app/assets/zones.json`, written by `tools/make_zones.py` with `web/zones.js`).
   What the person changes on the TV (`Prefs`: Home Settings, Shelf, Remote Buttons, Sleep Timer) wins over those first values.
 - Settings rows that need something this TV lacks stay, dimmed as *Unavailable*: `SettingsActivity.need` names what a
   row needs, `Capabilities.missing` says why it's missing (once per screen), and OK on the row shows it in a toast.

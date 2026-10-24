@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 final class HomeData {
     static final String[] COINS = {"BTC", "ETH", "SOL", "USDT"};
     static final String[] COIN_NAMES = {"Bitcoin", "Ethereum", "Solana", "Dollar"};
-    private static final String CURRENCY = Config.CURRENCY.trim().toUpperCase(Locale.ROOT);
+    private static final String CURRENCY = Place.currency();
     /** Binance has no pairs in some currencies (INR...) and then refuses the whole request: prices go in dollars instead. */
     private static volatile boolean inDollars;
 

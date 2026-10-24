@@ -121,9 +121,9 @@ final class Prefs {
 
     // MARK: - City
 
-    static String city() { return sp().getString("city", Config.CITY).trim(); }
-    static String latitude() { return sp().getString("latitude", Config.LATITUDE); }
-    static String longitude() { return sp().getString("longitude", Config.LONGITUDE); }
+    static String city() { return sp().getString("city", Place.city()).trim(); }
+    static String latitude() { return sp().getString("latitude", Place.latitude()); }
+    static String longitude() { return sp().getString("longitude", Place.longitude()); }
 
     static void setCity(String name, String latitude, String longitude) {
         sp().edit().putString("city", name).putString("latitude", latitude).putString("longitude", longitude).apply();

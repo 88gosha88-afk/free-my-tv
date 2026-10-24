@@ -41,6 +41,21 @@ About ten minutes. You need a Google TV or Android TV (Android 8 or newer) and a
    It downloads the code, installs the tools it needs, builds the app and puts it on your TV, and asks before anything important. Swap in your TV's IP and your city.
 3. **On the TV**, open *Free My TV* → *Home Screen* → *Free My TV*. That's when the TV asks *Allow USB debugging?* for Free My TV: tick *Always allow* and accept.
 
+### The ready APK
+
+No tools to install besides adb. The APK on the [latest release](https://github.com/simbasjungles/free-my-tv/releases/latest) has no TMDB key, so the home screen has no picks, and it takes your city from the TV's time zone (change it in *Home Settings* → *City*).
+
+1. **On the TV**, do step 1 above.
+2. **On your computer**, download `FreeMyTV.apk` from the release and install it:
+   ```bash
+   adb connect 192.168.1.50:5555
+   adb install -r FreeMyTV.apk
+   ```
+   On Android 14, Google Play Protect may hold the install with *Risky app blocked*: choose *More details* → *Install anyway*.
+3. **On the TV**, do step 3 above.
+
+If you built Free My TV yourself before, switch back to *Original* and uninstall it first: your build and the release are signed with different keys. For the picks, build it yourself with your TMDB key (below).
+
 ### The manual way
 
 1. **On the TV**, do step 1 above.

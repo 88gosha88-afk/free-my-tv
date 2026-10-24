@@ -704,7 +704,7 @@ public class SettingsActivity extends Activity {
         private static final int SETTINGS_VISIBLE = 10;
 
         private boolean dollar() {
-            return "BRL".equalsIgnoreCase(Config.CURRENCY.trim());
+            return "BRL".equals(Place.currency());
         }
 
         private String[] settingLabels() {
