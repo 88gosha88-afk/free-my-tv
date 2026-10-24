@@ -36,8 +36,11 @@ final class HomeMode {
     static final String PKG = "io.freemytv";
     static final String HOME_ACTIVITY = PKG + "/" + PKG + ".HomeActivity";
     static final String SETTINGS_ACTIVITY = PKG + "/" + PKG + ".SettingsActivity";
-    /** Our screensaver: on Android 11 and 12 the copy that runs in the main process (ScreensaverAlone, #10). */
-    static final String DREAM = PKG + "/" + PKG + (Build.VERSION.SDK_INT >= 30 && Build.VERSION.SDK_INT <= 32 ? ".ScreensaverAlone" : ".Screensaver");
+    /** Our screensaver: on Android 11 to 12L the copy that runs in the main process (ScreensaverAlone, #10). */
+    private static final boolean DREAM_ALONE = Build.VERSION.SDK_INT >= 30 && Build.VERSION.SDK_INT <= 32;
+    static final String DREAM = PKG + "/" + PKG + (DREAM_ALONE ? ".ScreensaverAlone" : ".Screensaver");
+    /** The other copy: an update (ours or the TV's) moves the setting from it, without a notice. */
+    private static final String OTHER_DREAM = PKG + "/" + PKG + (DREAM_ALONE ? ".Screensaver" : ".ScreensaverAlone");
     static final String FREE = "free", ORIGINAL = "original";
 
     /**
@@ -686,10 +689,11 @@ final class HomeMode {
                     adb.shell("cmd package set-home-activity " + HOME_ACTIVITY);
                     fixed.add(Ui.tr("the home screen"));
                 }
-                // Whole component names: ".ScreensaverAlone" (Android 11 and 12) contains ".Screensaver" (the others).
-                if (!reverted && !Arrays.asList(adb.shell("settings get secure screensaver_components").trim().split(",")).contains(DREAM)) {
+                // Whole component names: ".ScreensaverAlone" (Android 11 to 12L) contains ".Screensaver" (the others).
+                List<String> savers = Arrays.asList(adb.shell("settings get secure screensaver_components").trim().split(","));
+                if (!reverted && !savers.contains(DREAM)) {
                     adb.shell("settings put secure screensaver_components " + DREAM);
-                    fixed.add(Ui.tr("the screensaver"));
+                    if (!savers.contains(OTHER_DREAM)) fixed.add(Ui.tr("the screensaver"));   // ours, moved: not the TV
                 }
                 record(adb, disabled);
                 JSONObject latest = state(app);
