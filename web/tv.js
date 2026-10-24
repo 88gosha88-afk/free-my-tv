@@ -112,9 +112,13 @@ var TV = (function () {
   // A 2023 Q60C (Tizen 9 in Brazil) ships Globoplay as org.tizen.globoplayapp.
   var SAMSUNG_HIDDEN = new RegExp('^(org\\.volt\\.|org\\.tizen\\.(?!browser$|netflix|primevideo$|globoplay)|org\\.tizen\\.netflixlowmem$|ise-|ug-|d75857a5-)' +
       '|[Ss]ervice$|[Dd]aemon|Preview$|syspopup|[Hh]elper$|AdPlayer|AdSuite|[Kk]eyboard|\\.OTApp$' +
-      '|^com\\.samsung\\.(calendar-account-manager|tv\\.(cobalt-|aria-(dummy|engine)|airplay-app|ambient-support|' +
-      'built-in-app-info-viewer|commonsearch|searchall|preview-|tv-scheduler|csfs|notification-app|mycontents|' +
-      'safLaunchBridge|shortcut|remote-workspace|voiceassistant|mybixby|weather-viewer))');
+      '|^com\\.samsung\\.calendar-account-manager' +
+      '|^com\\.samsung\\.tv\\.(?!store$|SmartThingsApp$|aria-video$|knox-browser-win365$)' +
+      '|^com\\.samsung\\.tizen\\.' +
+      '|^com\\.samsung\\.(ep[-.]|rdm[-.]|SelfDiagnosis$|mtm-banner$|hitcomp$|video-test$)' +
+      '|^com\\.sausng\\.' +
+      '|^adplatform\\.' +
+      '|^(unified-drm-|lib-|p2p-asm|mobilebff$|comss$|acm-watcher$|dmr_service_app$|aifw-|csapi-|capi-|ep-|test-|emergency-log-transmitter$|samsung-easy-support$)');
 
   // Samsung apps whose iconPath is Tizen's generic pinwheel (a valid image, so onerror never fires): our own icons.
   // Seen on a 2018 NU7675 (Tizen 4); Smart Hub draws their real icons from a folder apps can't read. On a 2017
