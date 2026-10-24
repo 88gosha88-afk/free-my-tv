@@ -588,14 +588,15 @@
     el('div', 'cond', card, Data.condition(w.code, w.isDay));
     el('div', 'range', card, trf('H:{max}', {max: Data.degrees(w.max)}) + '   ' + trf('L:{min}', {min: Data.degrees(w.min)}));
     el('div', 'split', card);
-    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hw = width / 6;
-    for (var i = 0; i < w.hours.length && i < 6; i++) {
-      var h = el('div', 'hour', hours), x = w.hours[i];
+    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hw = width / 5;
+    for (var i = 0; w.days && i < w.days.length && i < 5; i++) {
+      var h = el('div', 'hour', hours), x = w.days[i];
       h.style.left = (hw * i) + 'px';
       h.style.width = hw + 'px';
-      el('div', 't', h, Data.hour(x.at));
-      sym(Data.symbol(x.code, x.day), h);
-      el('div', 'd', h, Data.degrees(x.temp));
+      el('div', 't', h, Data.weekday(x.at));
+      sym(Data.symbol(x.code, true), h);
+      var t = el('div', 'd', h, Data.degrees(x.max));
+      el('span', 'low', t, Data.degrees(x.min));
     }
     var sun = el('div', 'sun', card);
     if (w.sunrise) { var a = el('span', '', sun); sym('sunrise', a); a.appendChild(document.createTextNode(trf('Sunrise {time}', {time: Data.time(w.sunrise)}))); }

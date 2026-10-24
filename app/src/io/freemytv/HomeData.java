@@ -43,8 +43,8 @@ final class HomeData {
     private static String quote() {
         return CURRENCY.equals("USD") || inDollars ? "USDT" : CURRENCY;
     }
-    private static final String WEATHER_QUERY = "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset"
-            + "&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=2";
+    private static final String WEATHER_QUERY = "&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code"
+            + "&timezone=auto&forecast_days=6";
 
     private static String weatherPlace() {
         return Prefs.latitude() + "," + Prefs.longitude();
@@ -124,11 +124,11 @@ final class HomeData {
         int code = -1;
         boolean isDay = true;
         long sunrise, sunset;   // today's, in epoch ms
-        // Next hours (starting at the next full hour): time, temperature, code and day/night.
-        final List<Long> hours = new ArrayList<>();
-        final List<Double> hourTemp = new ArrayList<>();
-        final List<Integer> hourCode = new ArrayList<>();
-        final List<Boolean> hourDay = new ArrayList<>();
+        // The next 5 days (from tomorrow): noon of each day, high, low and code.
+        final List<Long> days = new ArrayList<>();
+        final List<Double> dayMax = new ArrayList<>();
+        final List<Double> dayMin = new ArrayList<>();
+        final List<Integer> dayCode = new ArrayList<>();
     }
 
     private static HomeData instance;
@@ -166,7 +166,8 @@ final class HomeData {
             // The cached forecast is for the city it was fetched for; another city means fetch again.
             if (w != null && weatherPlace().equals(cache.getString("weatherPlace", ""))) {
                 weather = parseWeather(w);
-                weatherAt = cache.getLong("weatherAt", 0);
+                // Cached before the days were fetched: fetch again now.
+                weatherAt = weather.days.isEmpty() ? 0 : cache.getLong("weatherAt", 0);
                 weatherFor = weatherPlace();
             }
         } catch (Exception ignored) {}
@@ -267,21 +268,16 @@ final class HomeData {
         w.min = daily.getJSONArray("temperature_2m_min").getDouble(0);
         w.sunrise = localTime(daily.getJSONArray("sunrise").getString(0), zone);
         w.sunset = localTime(daily.getJSONArray("sunset").getString(0), zone);
-        JSONObject hourly = o.optJSONObject("hourly");
-        if (hourly != null) {
-            JSONArray times = hourly.getJSONArray("time");
-            JSONArray temps = hourly.getJSONArray("temperature_2m");
-            JSONArray codes = hourly.getJSONArray("weather_code");
-            JSONArray days = hourly.optJSONArray("is_day");
-            long now = System.currentTimeMillis();
-            for (int i = 0; i < times.length() && w.hours.size() < 6; i++) {
-                long at = localTime(times.getString(i), zone);
-                if (at <= now) continue;
-                w.hours.add(at);
-                w.hourTemp.add(temps.getDouble(i));
-                w.hourCode.add(codes.getInt(i));
-                w.hourDay.add(days == null || days.optInt(i, 1) == 1);
-            }
+        JSONArray dates = daily.getJSONArray("time"), codes = daily.optJSONArray("weather_code");
+        long now = System.currentTimeMillis();
+        for (int i = 0; codes != null && i < dates.length() && w.days.size() < 5; i++) {
+            long noon = localTime(dates.getString(i) + "T12:00", zone);
+            // Only days that haven't started: today, and past days in a forecast cached offline, are left out.
+            if (noon - 12 * 3600_000L <= now) continue;
+            w.days.add(noon);
+            w.dayMax.add(daily.getJSONArray("temperature_2m_max").getDouble(i));
+            w.dayMin.add(daily.getJSONArray("temperature_2m_min").getDouble(i));
+            w.dayCode.add(codes.getInt(i));
         }
         return w;
     }
@@ -451,6 +447,15 @@ final class HomeData {
 
     static String hour(long at) {
         return Ui.once(Prefs.clock24() ? "hour24" : "hour", at, () -> Ui.datePattern("format|h a").format(at));
+    }
+
+    /** "Seg", "Mon", "Lun", "Mo", "Пн": the short day of the week, capitalized and without the abbreviation's dot. */
+    static String weekday(long at) {
+        return Ui.once("weekday", at, () -> {
+            String s = Ui.datePattern("format|EEE").format(at);
+            if (s.endsWith(".")) s = s.substring(0, s.length() - 1);
+            return s.isEmpty() ? s : s.substring(0, 1).toUpperCase(Ui.locale()) + s.substring(1);
+        });
     }
 
     /** How long ago the data was fetched, if it's stale (no internet): "12 min ago". */
