@@ -774,7 +774,8 @@ public class SettingsActivity extends Activity {
                             : background.equals("plain") ? Ui.tr("Gradiente", "Gradient") : Ui.tr("Automático", "Automatic"),
                     placeLabel(Prefs.backgroundPlace()),
                     photosValue(), AerialStore.get(getContext()).size() >> 20 == 0
-                            ? Ui.tr("Nada baixado", "Nothing downloaded")
+                            ? (AerialStore.get(getContext()).busy() ? Ui.tr("Baixando…", "Downloading…")
+                                    : Ui.tr("Nada baixado", "Nothing downloaded"))
                             : Ui.tr("Apagar vídeos, ", "Delete videos, ") + (AerialStore.get(getContext()).size() >> 20) + " MB",
                     Prefs.saverSwitch() == 0 ? Ui.tr("No fim do vídeo", "When it ends")
                             : Prefs.saverSwitch() + (Ui.ru ? " мин" : " min")};
@@ -1116,6 +1117,8 @@ public class SettingsActivity extends Activity {
             } else if (focus == 1) {
                 screen = SAVER_SETTINGS;
                 focus = 0;
+                // The videos come in while the settings are open (and the screen shows how far it is).
+                if (Prefs.screensaver().equals("aerial")) AerialStore.get(c).download(null, Prefs.saverPlace());
             } else if (focus == 2) {
                 screen = HOME_SETTINGS;
                 focus = 0;
