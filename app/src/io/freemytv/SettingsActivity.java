@@ -670,6 +670,7 @@ public class SettingsActivity extends Activity {
                         if (backDown && !e.isCanceled()) {
                             if (screen == PICKER && pickFor <= PICK_SLEEP) {
                                 focus = powerFocus(pickFor == PICK_SLEEP ? P_SLEEP : P_WHERE);
+                                pickScroll = 0;   // the picker's scroll isn't this short list's
                                 screen = POWER;
                             } else if (screen == PICKER && (pickFor == PICK_CITY || pickFor == PICK_LANGUAGE)) {
                                 focus = pickFor == PICK_CITY ? CITY_ROW : 0;
@@ -765,8 +766,10 @@ public class SettingsActivity extends Activity {
                     int id = powerRows()[i];
                     return id == P_WHERE ? Capabilities.NEED_OVERLAY : null;
                 }
-                case SHELF_EDIT:
-                    return editingTop && HomeApps.TOP_LIVE.equals(shelfRows.get(pickScroll + i)[0]) ? Capabilities.NEED_LIVE_TV : null;
+                case SHELF_EDIT: {   // only to add it: one already among the buttons can still move or go
+                    String key = shelfRows.get(pickScroll + i)[0];
+                    return editingTop && HomeApps.TOP_LIVE.equals(key) && !shelfOrder.contains(key) ? Capabilities.NEED_LIVE_TV : null;
+                }
                 default:
                     return null;
             }
@@ -782,7 +785,7 @@ public class SettingsActivity extends Activity {
                 whyScroll = pickScroll;
                 for (int r = 0; r < n; r++) {
                     String need = need(r);
-                    whyRows[r] = screen == HOME_SETTINGS && r >= COIN_ROWS && !Prefs.quotes()
+                    whyRows[r] = screen == HOME_SETTINGS && pickScroll + r >= COIN_ROWS && !Prefs.quotes()
                             ? Ui.tr("Turn on the Quotes widget to pick its coins.")
                             : need == null ? null : Capabilities.missing(getContext(), need);
                 }
@@ -887,6 +890,7 @@ public class SettingsActivity extends Activity {
                 Prefs.setSleepPlace(Integer.parseInt(choice[0]));
                 SleepOverlay.update(c);
             }
+            pickScroll = 0;
             screen = POWER;
             focus = powerFocus(row);
         }
@@ -1269,7 +1273,7 @@ public class SettingsActivity extends Activity {
             c.drawText(where + (screen == HOME_SETTINGS && from + focus == PHOTOS_ROW ? (Photos.files(getContext()).isEmpty()
                     ? Ui.tr("Send them from a computer: see “Your own photos” in the README.")
                     : Ui.tr("OK removes them; the arrows turn them on or off."))
-                    : screen == POWER && powerRow() != P_SHOW ? Ui.tr("OK opens the list. ← → change the value.")
+                    : screen == POWER && powerRow() != P_SHOW && unavailable(focus) == null ? Ui.tr("OK opens the list. ← → change the value.")
                     : Ui.tr("OK or the arrows change the value.")), LIST_X * k + 30 * k, hy, hint);
             if (keys) {
                 c.drawText(RemoteKeys.VESTEL ? Ui.tr("YouTube, Prime Video and Google Play: the TV itself controls those buttons.")
@@ -1355,6 +1359,7 @@ public class SettingsActivity extends Activity {
                 screen = REMOTE_KEYS;
                 focus = 0;
             } else if (focus == 6) {
+                pickScroll = 0;
                 screen = POWER;
                 focus = 0;
             } else {
