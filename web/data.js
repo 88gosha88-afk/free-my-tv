@@ -47,6 +47,8 @@ var Prefs = (function () {
     temperature: function () { return pick('temperature', CONFIG.temperature || 'auto'); },
     theme: function () { return pick('theme', CONFIG.theme || 'auto'); },
     weather: function () { return pick('weather', true); },
+    /** The weather card's forecast: 'hours' (the next 6 hours) or 'days' (the next 5 days). */
+    forecast: function () { return pick('forecast', 'hours') === 'days' ? 'days' : 'hours'; },
     quotes: function () { return pick('quotes', CONFIG.showCrypto !== false); },
     coin: function (i) { var c = pick('coins', null); return c ? c[i] !== false : true; },
     shelf: function () { return pick('shelf', null); },
@@ -92,11 +94,15 @@ var Data = (function () {
   // MARK: - Weather
 
   var PLACE = Place.lat + ',' + Place.lon;
+  // Both forecasts in one answer, the next 48 hours and today plus 5 days: Home Settings → Forecast switches without
+  // asking again, and offline too.
+  var QUERY = '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code'
+      + '&hourly=temperature_2m,weather_code,is_day&timezone=auto&forecast_days=6&forecast_hours=48';
   var weather = null, weatherAt = 0, fetchingWeather = false;
   (function () {
     var w = stored('weather');
-    // Cached before the days were fetched: fetch again now.
-    if (w && w.place === PLACE) { weather = parseWeather(w.body); weatherAt = weather && weather.days.length ? w.at : 0; }
+    // Fetched with another query (an older version): shown, and fetched again now.
+    if (w && w.place === PLACE) { weather = parseWeather(w.body); weatherAt = w.query === QUERY ? w.at : 0; }
   })();
 
   /** "2026-10-20T18:31" at the location (Open-Meteo's local time) → epoch ms. */
@@ -112,15 +118,21 @@ var Data = (function () {
     var w = {
       temp: o.current.temperature_2m, code: o.current.weather_code, isDay: o.current.is_day !== 0,
       max: dl.temperature_2m_max[0], min: dl.temperature_2m_min[0],
-      sunrise: localTime(dl.sunrise[0], off), sunset: localTime(dl.sunset[0], off), days: []
+      sunrise: localTime(dl.sunrise[0], off), sunset: localTime(dl.sunset[0], off), hours: [], days: []
     };
-    // The next 5 days, from tomorrow, each at its noon (none in a forecast cached before the days). Only days that
-    // haven't started: today, and past days in a forecast cached offline, are left out.
-    for (var i = 0; dl.weather_code && i < dl.time.length && w.days.length < 5; i++) {
-      var noon = localTime(dl.time[i] + 'T12:00', off);
-      if (noon - 12 * 3600000 <= now) continue;
-      w.days.push({at: noon, max: dl.temperature_2m_max[i],
-        min: dl.temperature_2m_min[i], code: dl.weather_code[i]});
+    var hr = o.hourly;
+    for (var i = 0; hr && i < hr.time.length && w.hours.length < 6; i++) {
+      var at = localTime(hr.time[i], off);
+      if (at <= now) continue;
+      w.hours.push({at: at, temp: hr.temperature_2m[i], code: hr.weather_code[i], day: !hr.is_day || hr.is_day[i] !== 0});
+    }
+    // The next 5 days, from tomorrow (none in a forecast cached before the days). Only days that haven't started at
+    // the city: today, and past days in a forecast cached offline, are left out.
+    for (var j = 0; dl.weather_code && j < dl.time.length && w.days.length < 5; j++) {
+      if (localTime(dl.time[j] + 'T12:00', off) - 12 * 3600000 <= now) continue;
+      var p = dl.time[j].split('-');   // named by its noon on the TV's clock, right even with the city far away
+      w.days.push({at: new Date(+p[0], p[1] - 1, +p[2], 12).getTime(), max: dl.temperature_2m_max[j],
+        min: dl.temperature_2m_min[j], code: dl.weather_code[j]});
     }
     return w;
   }
@@ -129,15 +141,13 @@ var Data = (function () {
     var now = Date.now();
     if (fetchingWeather || (now - weatherAt < 30 * 60000 && now >= weatherAt)) return;
     fetchingWeather = true;
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + Place.lat + '&longitude=' + Place.lon
-        + '&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weather_code'
-        + '&timezone=auto&forecast_days=6';
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + Place.lat + '&longitude=' + Place.lon + QUERY;
     get(url, {}, function (err, body) {
       fetchingWeather = false;
       if (err) return;
       weather = parseWeather(body);
       weatherAt = Date.now();
-      store('weather', {place: PLACE, body: body, at: weatherAt});
+      store('weather', {place: PLACE, body: body, at: weatherAt, query: QUERY});
       changed();
     });
   }
@@ -566,6 +576,8 @@ var Data = (function () {
       var f = unit === 'F' || (unit === 'auto' && Place.fahrenheit);
       return Math.round(f ? v * 9 / 5 + 32 : v) + '°';
     },
+    /** "3 PM", "15:00", "15 Uhr": the hourly forecast. */
+    hour: function (at) { return formatDate('format|h a', at); },
     /** "Seg", "Mon", "Lun", "Mo", "Пн": the short day of the week, capitalized and without the abbreviation's dot. */
     weekday: function (at) {
       var s = formatDate('format|EEE', at).replace(/\.$/, '');

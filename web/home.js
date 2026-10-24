@@ -588,15 +588,17 @@
     el('div', 'cond', card, Data.condition(w.code, w.isDay));
     el('div', 'range', card, trf('H:{max}', {max: Data.degrees(w.max)}) + '   ' + trf('L:{min}', {min: Data.degrees(w.min)}));
     el('div', 'split', card);
-    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hw = width / 5;
-    for (var i = 0; w.days && i < w.days.length && i < 5; i++) {
-      var h = el('div', 'hour', hours), x = w.days[i];
+    // Home Settings → Forecast: the next 6 hours or the next 5 days (the hours until a forecast has days).
+    var days = Prefs.forecast() === 'days' && w.days && w.days.length > 0, list = days ? w.days : w.hours, n = days ? 5 : 6;
+    var hours = el('div', 'hours', card), width = parseFloat(card.style.width) - 30 - 422, hw = width / n;
+    for (var i = 0; list && i < list.length && i < n; i++) {
+      var h = el('div', 'hour', hours), x = list[i];
       h.style.left = (hw * i) + 'px';
       h.style.width = hw + 'px';
-      el('div', 't', h, Data.weekday(x.at));
-      sym(Data.symbol(x.code, true), h);
-      var t = el('div', 'd', h, Data.degrees(x.max));
-      el('span', 'low', t, Data.degrees(x.min));
+      el('div', 't', h, days ? Data.weekday(x.at) : Data.hour(x.at));
+      sym(Data.symbol(x.code, days || x.day), h);
+      var t = el('div', 'd', h, Data.degrees(days ? x.max : x.temp));
+      if (days) el('span', 'low', t, Data.degrees(x.min));
     }
     var sun = el('div', 'sun', card);
     if (w.sunrise) { var a = el('span', '', sun); sym('sunrise', a); a.appendChild(document.createTextNode(trf('Sunrise {time}', {time: Data.time(w.sunrise)}))); }
@@ -682,6 +684,8 @@
         step: function (d) { cycle('theme', ['auto', 'light', 'dark'], theme, d); checkNight(); }},
       {label: tr('Weather widget'), toggle: Prefs.weather(),
         step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }},
+      {label: tr('Forecast'), value: Prefs.forecast() === 'days' ? tr('Next days') : tr('Next hours'),
+        step: function (d) { cycle('forecast', ['hours', 'days'], Prefs.forecast(), d); renderPanels(); }},
       {label: tr('Quotes widget'), toggle: Prefs.quotes(),
         step: function () { Prefs.set('quotes', !Prefs.quotes()); Data.settingsChanged(); }}
     ];
