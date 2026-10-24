@@ -176,7 +176,7 @@ final class ScreensaverStage extends FrameLayout {
         pending = null;
         current = s;
         last = s.clip;
-        dream.setCaption(s.clip.place);
+        dream.setCaption(s.clip.clip.place);
         dream.setMode(DreamView.VIDEO);
         s.view.animate().alpha(1f).setDuration(FADE_MS).withEndAction(() -> {
             if (s == current) frozen.setImageDrawable(null);
