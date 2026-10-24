@@ -1,6 +1,7 @@
 package io.freemytv;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
@@ -10,6 +11,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import java.io.FileInputStream;
 
@@ -20,6 +22,8 @@ import java.io.FileInputStream;
  *    there, and whenever there is none, it shows the clock over the aurora;
  *  - "photos": the recommendations' photos (DreamView alone);
  *  - "clock": the big clock over the aurora (DreamView alone).
+ * Every clip gets a view of its own (the TV's player doesn't take a second video on a surface it has just let go of):
+ * when one ends, its last frame is kept as a picture, the next one prepares, and fades in over it: no blank screen.
  * If the video can't be played, or can't be downloaded, it stays with the clock over the aurora: the screen is never
  * left black.
  */
@@ -27,27 +31,35 @@ final class ScreensaverStage extends FrameLayout {
     private static final long STALL_MS = 20_000, FADE_MS = 1200;
     private static final int MAX_ERRORS = 3;
 
+    /** One clip: its view, its surface and its player. */
+    private static final class Slot {
+        TextureView view;
+        Surface surface;
+        MediaPlayer player;
+        AerialStore.Cached clip;
+        boolean disposed;
+    }
+
     private final DreamView dream;
+    private final ImageView frozen;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private AerialStore store;
-    private TextureView texture;
-    private Surface surface;
-    private MediaPlayer player;
-    private AerialStore.Cached playing;
+    private Slot current, pending;
+    private AerialStore.Cached last;
     private boolean running, aerial;
     private int errors;
     private final Runnable stalled = () -> {
         AppLog.w("aerial video stalled");
-        fail();
+        if (pending != null) failSlot(pending);
     };
 
     private final AerialStore.Callback downloads = new AerialStore.Callback() {
         @Override public void onReady() {
-            if (running && aerial && player == null) playNext();
+            if (running && aerial && current == null && pending == null) playNext();
         }
 
         @Override public void onFailed() {
-            if (running && aerial && player == null) giveUp();
+            if (running && aerial && current == null && pending == null) giveUp();
         }
     };
 
@@ -59,29 +71,10 @@ final class ScreensaverStage extends FrameLayout {
         aerial = mode.equals("aerial") && !Aerials.all(c).isEmpty();
         // Photos, or the clock over the aurora; with the aerials it is the clock until a video is playing.
         dream.setMode(mode.equals("photos") ? DreamView.PHOTOS : DreamView.CLOCK);
-        if (aerial) {
-            store = AerialStore.get(c);
-            texture = new TextureView(c);
-            texture.setAlpha(0f);
-            texture.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
-                @Override public void onSurfaceTextureAvailable(SurfaceTexture st, int width, int height) {
-                    surface = new Surface(st);
-                    if (running && player == null) playNext();
-                }
-
-                @Override public void onSurfaceTextureSizeChanged(SurfaceTexture st, int width, int height) {}
-
-                @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture st) {
-                    releasePlayer();
-                    if (surface != null) surface.release();
-                    surface = null;
-                    return true;
-                }
-
-                @Override public void onSurfaceTextureUpdated(SurfaceTexture st) {}
-            });
-            addView(texture, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        }
+        frozen = new ImageView(c);
+        frozen.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        if (aerial) store = AerialStore.get(c);
+        addView(frozen, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         addView(dream, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
@@ -92,7 +85,7 @@ final class ScreensaverStage extends FrameLayout {
         dream.start();
         if (aerial) {
             store.download(downloads, Prefs.saverPlace());   // fills the cache in the background (does nothing if full)
-            if (surface != null && player == null) playNext();
+            playNext();
         }
     }
 
@@ -101,70 +94,114 @@ final class ScreensaverStage extends FrameLayout {
         running = false;
         handler.removeCallbacksAndMessages(null);
         if (store != null) store.setCallback(null);   // a download in progress carries on, for next time
-        releasePlayer();
+        dispose(pending);
+        dispose(current);
+        pending = null;
+        current = null;
+        frozen.setImageDrawable(null);
         dream.stop();
     }
 
-    /** Plays a downloaded clip from disk; with none yet, waits (the clock over the aurora) for a download to finish. */
+    /** Starts the next downloaded clip in a new view; with none yet, waits (the clock over the aurora) for a download. */
     private void playNext() {
-        if (!running || !aerial || surface == null) return;
-        AerialStore.Cached next = store.pick(playing, Prefs.saverPlace());
-        releasePlayer();
+        if (!running || !aerial || pending != null) return;
+        AerialStore.Cached next = store.pick(last, Prefs.saverPlace());
         if (next == null) {
-            dream.setMode(DreamView.CLOCK);
+            if (current == null && frozen.getDrawable() == null) dream.setMode(DreamView.CLOCK);
             return;
         }
-        playing = next;
-        if (dream.getMode() != DreamView.VIDEO) dream.setCaption(next.clip.place);   // else it changes with the picture
+        final Slot s = new Slot();
+        s.clip = next;
+        s.view = new TextureView(getContext());
+        s.view.setAlpha(0f);
+        s.view.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
+            @Override public void onSurfaceTextureAvailable(SurfaceTexture st, int width, int height) {
+                s.surface = new Surface(st);
+                if (s == pending && s.player == null) begin(s);
+            }
+
+            @Override public void onSurfaceTextureSizeChanged(SurfaceTexture st, int width, int height) {}
+
+            @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture st) {
+                releasePlayer(s);
+                if (s.surface != null) s.surface.release();
+                s.surface = null;
+                return true;
+            }
+
+            @Override public void onSurfaceTextureUpdated(SurfaceTexture st) {}
+        });
+        pending = s;
+        addView(s.view, getChildCount() - 1, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        handler.removeCallbacks(stalled);
+        handler.postDelayed(stalled, STALL_MS);
+    }
+
+    /** The view has its surface: play the clip from disk on it. */
+    private void begin(final Slot s) {
         try {
             MediaPlayer mp = new MediaPlayer();
-            player = mp;
-            mp.setSurface(surface);
+            s.player = mp;
+            mp.setSurface(s.surface);
             mp.setVolume(0f, 0f);
             mp.setOnPreparedListener(p -> {
-                if (p == player) p.start();
+                if (p == s.player) p.start();
             });
             mp.setOnInfoListener((p, what, extra) -> {
-                if (p == player && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-                    handler.removeCallbacks(stalled);
-                    errors = 0;
-                    dream.setCaption(next.clip.place);
-                    dream.setMode(DreamView.VIDEO);
-                    texture.animate().alpha(1f).setDuration(FADE_MS).start();
-                }
+                if (p == s.player && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START && s == pending) show(s);
                 return false;
             });
             mp.setOnCompletionListener(p -> {
-                if (p != player) return;
-                // The last frame stays on the screen (no blue gap) until the next clip shows its first one.
-                playNext();
+                if (p == s.player && s == current) ended(s);
             });
             mp.setOnErrorListener((p, what, extra) -> {
-                AppLog.w("aerial video error " + what + "/" + extra + " in " + next.file.getName());
-                if (p == player) fail();
+                AppLog.w("aerial video error " + what + "/" + extra + " in " + s.clip.file.getName());
+                if (p == s.player) failSlot(s);
                 return true;
             });
-            try (FileInputStream in = new FileInputStream(next.file)) {
+            try (FileInputStream in = new FileInputStream(s.clip.file)) {
                 mp.setDataSource(in.getFD());
             }
             mp.prepareAsync();
-            handler.removeCallbacks(stalled);
-            handler.postDelayed(stalled, STALL_MS);
         } catch (Exception e) {
             AppLog.w("aerial video failed: " + e.getMessage());
-            fail();
+            failSlot(s);
         }
     }
 
-    /** One clip failed to play: try another after a pause; after a few in a row, stay with the clock over the aurora. */
-    private void fail() {
+    /** The new clip shows its first frame: it fades in over the last frame of the one before. */
+    private void show(Slot s) {
         handler.removeCallbacks(stalled);
-        releasePlayer();
-        if (texture != null) {
-            texture.animate().cancel();
-            texture.setAlpha(0f);
+        errors = 0;
+        pending = null;
+        current = s;
+        last = s.clip;
+        dream.setCaption(s.clip.place);
+        dream.setMode(DreamView.VIDEO);
+        s.view.animate().alpha(1f).setDuration(FADE_MS).withEndAction(() -> {
+            if (s == current) frozen.setImageDrawable(null);
+        }).start();
+    }
+
+    /** A clip ended: keep its last frame as a picture, let go of its player, and start the next one. */
+    private void ended(Slot s) {
+        try {
+            Bitmap frame = s.view.getBitmap(960, 540);
+            if (frame != null) frozen.setImageBitmap(frame);
+        } catch (RuntimeException | OutOfMemoryError e) {
+            AppLog.w("aerial last frame: " + e.getMessage());
         }
-        dream.setMode(DreamView.CLOCK);
+        current = null;
+        dispose(s);
+        playNext();
+    }
+
+    /** One clip failed to play: try another after a pause; after a few in a row, stay with the clock over the aurora. */
+    private void failSlot(Slot s) {
+        handler.removeCallbacks(stalled);
+        if (s == pending) pending = null;
+        if (s == current) current = null;
+        dispose(s);
         if (!running) return;
         if (++errors >= MAX_ERRORS) {
             giveUp();
@@ -176,18 +213,30 @@ final class ScreensaverStage extends FrameLayout {
     private void giveUp() {
         AppLog.w("aerials: giving up for now, showing the clock");
         aerial = false;
+        handler.removeCallbacksAndMessages(null);
         if (store != null) {
             store.cancel();
             store.setCallback(null);
         }
-        if (texture != null) texture.animate().alpha(0f).setDuration(FADE_MS).start();
+        dispose(pending);
+        dispose(current);
+        pending = null;
+        current = null;
+        frozen.setImageDrawable(null);
         dream.setMode(DreamView.CLOCK);
     }
 
-    private void releasePlayer() {
-        handler.removeCallbacks(stalled);
-        MediaPlayer mp = player;
-        player = null;
+    private void dispose(Slot s) {
+        if (s == null || s.disposed) return;
+        s.disposed = true;
+        s.view.animate().cancel();
+        releasePlayer(s);
+        removeView(s.view);
+    }
+
+    private void releasePlayer(Slot s) {
+        MediaPlayer mp = s.player;
+        s.player = null;
         if (mp == null) return;
         try {
             mp.setOnPreparedListener(null);
