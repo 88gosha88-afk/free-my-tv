@@ -273,6 +273,14 @@ final class HomeMode {
 
     static void applyNow(Context c, String mode) {
         synchronized (RUN) {
+            if (FREE.equals(mode) && projectorWithOwnHome(c)) {
+                // The projector's firmware keeps its own home screen: ours opens over it (and at every boot).
+                openHome(c);
+                done(c, null);
+                notice(c, Ui.tr("Este projetor mantém o Início dele: o Free My TV abre por cima.",
+                        "This projector keeps its own home screen: Free My TV opens over it."));
+                return;
+            }
             if (FREE.equals(mode)) applyFree(c); else applyOriginal(c);
         }
     }

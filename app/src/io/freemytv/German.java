@@ -128,6 +128,7 @@ final class German {
             case "today": return "heute";
             case "Change video every": return "Video wechseln alle";
             case "When it ends": return "Am Ende des Videos";
+            case "This projector keeps its own home screen: Free My TV opens over it.": return "Dieser Projektor behält seinen Startbildschirm: Free My TV öffnet sich darüber.";
             case "Starts after": return "Startet nach";
             case "TV's setting": return "Wie im Fernseher";
             case "Any": return "Beliebig";
