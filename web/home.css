@@ -85,6 +85,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .drawer-open #top { opacity: 0; }
 #drawer { -webkit-transform: translateY(560px); transform: translateY(560px); opacity: 0; }
 .drawer-open #drawer { -webkit-transform: none; transform: none; opacity: 1; }
+/* Closed, it still spans the screen below the shelf: only its keys take the pointer, and only when it's open. */
+#drawer { pointer-events: none; }
+.drawer-open #drawer .key { pointer-events: auto; }
 
 /* MARK: - Title and tabs */
 

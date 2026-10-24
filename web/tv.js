@@ -33,6 +33,24 @@ var TV = (function () {
     bridge.call(uri, JSON.stringify(params || {}));
   }
 
+  // LG's own screensaver asks every subscribed app first. While Free My TV is on screen and its own screensaver will
+  // take over (`hold`, from home.js), it says no; otherwise, and in the background, the TV's runs as before.
+  var saverBridge = null;
+
+  function holdScreenSaver(hold) {
+    if (!webos || saverBridge) return;
+    saverBridge = new window.PalmServiceBridge();
+    saverBridge.onservicecallback = function (message) {
+      var m = null;
+      try { m = JSON.parse(message); } catch (e) {}
+      if (!m || m.timestamp === undefined) return;
+      luna('luna://com.webos.service.tvpower/power/responseScreenSaverRequest',
+          {clientName: self, ack: !!document.hidden || !hold(), timestamp: m.timestamp});
+    };
+    saverBridge.call('luna://com.webos.service.tvpower/power/registerScreenSaverRequest',
+        JSON.stringify({subscribe: true, clientName: self}));
+  }
+
   // webOS 6 gives Developer Mode apps only the "public" group, which leaves out listLaunchPoints. There the list comes
   // from the TV's remote control API on 127.0.0.1:3000 (the one LG's phone app uses), which takes file:// pages.
   // The TV asks once to allow it; the key it gives back is kept.
@@ -363,6 +381,9 @@ var TV = (function () {
       if (samsung) samsungSettings(done);
       else this.launch('com.palm.app.settings', null, done);
     },
+
+    /** LG: keeps the TV's screensaver away while ours will take over (`hold` says when). */
+    holdScreenSaver: holdScreenSaver,
 
     /** Back on the first screen: back to wherever the person came from. */
     back: function () {

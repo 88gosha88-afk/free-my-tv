@@ -428,6 +428,12 @@
     c.lastChild.textContent = formatDate('format|EEEE, MMMM d', d.getTime());
   }
 
+  /** On the minute, so the clock never runs late (the 30-second refresh could, by up to 30 s). */
+  function tickClock() {
+    renderClock();
+    setTimeout(tickClock, 60000 - Date.now() % 60000 + 50);
+  }
+
   // MARK: - Shelf
 
   var shelfFirst = 0, tileStep = 0, tileLeft = 0;
@@ -981,17 +987,26 @@
 
   // MARK: - Night, clock, screensaver
 
+  var lastNight = null;
+
   function checkNight() {
     var night = Data.isNight(Date.now());
     setClass(body, 'night', night);
+    if (night === lastNight) return;
+    lastNight = night;
     document.documentElement.style.background = night ? '#0B0B0D' : '';
-    try { localStorage.setItem('fmtv.night', JSON.stringify(night)); } catch (e) {}   // for index.html, next start
+    try { localStorage.setItem('fmtv.night', night ? 'true' : 'false'); } catch (e) {}   // for index.html, next start
   }
 
   var saverOn = false, idleAt = Date.now(), saverIndex = 0, saverTimer = 0, SAVER_AFTER = 5 * 60000;
 
+  /** The screensaver's photos: picks with an app on the TV. */
+  function saverPhotos() {
+    return Data.showcase().filter(function (p) { return p.backdrop && Data.appFor(p.app); });
+  }
+
   function showSaver() {
-    var photos = Data.showcase().filter(function (p) { return p.backdrop && Data.appFor(p.app); });
+    var photos = saverPhotos();
     saverOn = true;
     var s = $('saver');
     s.innerHTML = '';
@@ -1128,14 +1143,16 @@
 
   I18N.set(Prefs.language());
   checkNight();   // now, from the last forecast: not after the TV lists its apps, with the day look until then
+  // LG's screensaver waits only when ours will show: not under a sheet (ours waits there), and not without photos.
+  TV.holdScreenSaver(function () { return !sheetOpen() && saverPhotos().length > 0; });
   fit();
   renderTop();
+  tickClock();
   loadApps(function () {
     renderAll();
     Data.refresh();
   });
   setInterval(function () {
-    renderClock();
     checkNight();
     Data.refresh();
     if (!saverOn && !sheetOpen() && Date.now() - idleAt > SAVER_AFTER) showSaver();
