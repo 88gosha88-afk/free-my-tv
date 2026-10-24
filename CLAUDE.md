@@ -136,7 +136,9 @@ with a Tizen certificate (`--sign`), which 2017-2022 TVs install as it is; on 20
 with the person's Samsung certificate. Sign every release with the same author certificate: older TVs refuse an
 update signed by another. `python3 webos/build.py --generic` makes the LG `.ipk` that goes along. Then
 `python3 tools/homebrew_repo.py <the uploaded FreeMyTV-webos.ipk>` writes `docs/webos/apps.json`, the webOS Homebrew
-Channel repository (https://freemytv.io/webos/apps.json, with that file's SHA-256): commit it with the release.
+Channel repository (https://freemytv.io/webos/apps.json, with that file's SHA-256), and a copy of the `.ipk` beside it:
+commit both with the release. The Channel installs from freemytv.io, not from the GitHub release, because GitHub's
+download redirect carries more headers than the TV's Node accepts ("Parse Error: Header overflow").
 
 ## Adapting it to another TV
 
