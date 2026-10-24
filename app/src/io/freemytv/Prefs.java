@@ -43,11 +43,11 @@ final class Prefs {
             KEY_XIAOMI_WINK = KeyEvent.KEYCODE_BUTTON_10, KEY_XIAOMI_IVI = KeyEvent.KEYCODE_BUTTON_12;
     /**
      * Hisense's buttons (Q6N, MediaTek, Android TV 12 tested; read from the key filter): global keys for Google TV's
-     * home app (launcherx), or Hisense's 607 for Disney+. The gear sends NOTIFICATION.
+     * home app (launcherx), or Hisense's 607 for Disney+. The gear sends NOTIFICATION; ALL_APPS (284) and PROFILE_SWITCH
+     * (288) are API 28/29 names, so numbers here.
      */
     static final int KEY_HISENSE_PRIME = 295, KEY_HISENSE_YOUTUBE = KeyEvent.KEYCODE_BUTTON_3, KEY_HISENSE_DISNEY = 607,
-            KEY_HISENSE_APPS = KeyEvent.KEYCODE_ALL_APPS, KEY_HISENSE_SETTINGS = KeyEvent.KEYCODE_NOTIFICATION,
-            KEY_HISENSE_PROFILE = KeyEvent.KEYCODE_PROFILE_SWITCH;
+            KEY_HISENSE_APPS = 284, KEY_HISENSE_SETTINGS = KeyEvent.KEYCODE_NOTIFICATION, KEY_HISENSE_PROFILE = 288;
     /** A button's value that opens this home screen's All Apps. */
     static final String ALL_APPS = HomeMode.PKG + "#all";
     static final int[] KEYS = RemoteKeys.HISENSE ? new int[] {KEY_HISENSE_PRIME, KEY_HISENSE_YOUTUBE, KEY_HISENSE_DISNEY,
