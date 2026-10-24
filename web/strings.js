@@ -206,8 +206,9 @@ var I18N = (function () {
       if (code) return code;
     }
     var tv = (navigator.language || 'en').replace('_', '-');
-    // Taiwan, Hong Kong and Macau write Traditional Chinese: never the Simplified catalogue there.
-    if (base(tv) === 'zh' && /-(Hant|TW|HK|MO)\b/i.test(tv)) return CATALOGUES['zh-TW'] ? 'zh-TW' : 'en';
+    // Taiwan, Hong Kong and Macau write Traditional Chinese: never the Simplified catalogue there (unless the TV
+    // itself is set to Simplified, zh-Hans-HK).
+    if (base(tv) === 'zh' && !/-Hans\b/i.test(tv) && /-(Hant|TW|HK|MO)\b/i.test(tv)) return CATALOGUES['zh-TW'] ? 'zh-TW' : 'en';
     return match(base(tv)) || 'en';
   }
 

@@ -245,8 +245,9 @@ final class Ui {
         }
         Locale tv = Locale.getDefault();
         String lang = base(tv.getLanguage());
-        // Taiwan, Hong Kong and Macau write Traditional Chinese: never the Simplified catalogue there.
-        if (lang.equals("zh") && ("Hant".equals(tv.getScript()) || "TW".equals(tv.getCountry())
+        // Taiwan, Hong Kong and Macau write Traditional Chinese: never the Simplified catalogue there (unless the TV
+        // itself is set to Simplified, zh-Hans-HK).
+        if (lang.equals("zh") && !"Hans".equals(tv.getScript()) && ("Hant".equals(tv.getScript()) || "TW".equals(tv.getCountry())
                 || "HK".equals(tv.getCountry()) || "MO".equals(tv.getCountry()))) {
             for (String code : languages()) if (code.equalsIgnoreCase("zh-TW")) return code;
             return "en";
