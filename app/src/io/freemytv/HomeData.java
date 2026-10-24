@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -265,7 +266,10 @@ final class HomeData {
 
     private static Weather parseWeather(String body) throws Exception {
         JSONObject o = new JSONObject(body);
-        TimeZone zone = TimeZone.getTimeZone(o.optString("timezone", TimeZone.getDefault().getID()));
+        // Open-Meteo writes every time at the place's offset of now, even past a DST change (Berlin's sunrise after the
+        // change still reads 07:51 at GMT+2): read them at that offset, as LG and Samsung do, not by the zone's rules.
+        TimeZone zone = o.has("utc_offset_seconds") ? new SimpleTimeZone(o.getInt("utc_offset_seconds") * 1000, "GMT")
+                : TimeZone.getTimeZone(o.optString("timezone", TimeZone.getDefault().getID()));
         Weather w = new Weather();
         JSONObject current = o.getJSONObject("current");
         w.temp = current.getDouble("temperature_2m");
