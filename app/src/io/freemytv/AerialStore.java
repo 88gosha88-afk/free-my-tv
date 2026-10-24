@@ -210,6 +210,7 @@ final class AerialStore {
             }
             if (fetch(next, fileOf(next))) {
                 failures = 0;
+                AppLog.w("aerials: downloaded " + next.file() + " (" + cached(place).size() + " of " + KEEP + " for '" + place + "')");
                 Stills.harvest(app, next, fileOf(next));
                 prune(place);
                 post(true);

@@ -125,6 +125,8 @@ final class Russian {
             case "Downloading…": return "Загрузка…";
             case "None yet": return "Пока нет";
             case "today": return "сегодня";
+            case "Change video every": return "Менять видео каждые";
+            case "When it ends": return "В конце видео";
             case "Starts after": return "Включается через";
             case "TV's setting": return "Как в ТВ";
             case "Any": return "Любое";

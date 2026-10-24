@@ -53,6 +53,11 @@ final class ScreensaverStage extends FrameLayout {
         if (pending != null) failSlot(pending);
     };
 
+    /** The time for the next clip has come, before this one ends (the setting "Change every"). */
+    private final Runnable change = () -> {
+        if (current != null && pending == null) ended(current);
+    };
+
     private final AerialStore.Callback downloads = new AerialStore.Callback() {
         @Override public void onReady() {
             if (running && aerial && current == null && pending == null) playNext();
@@ -105,6 +110,7 @@ final class ScreensaverStage extends FrameLayout {
     /** Starts the next downloaded clip in a new view; with none yet, waits (the clock over the aurora) for a download. */
     private void playNext() {
         if (!running || !aerial || pending != null) return;
+        store.download(null, Prefs.saverPlace());   // keeps the next clip coming (does nothing if they are all here)
         AerialStore.Cached next = store.pick(last, Prefs.saverPlace());
         if (next == null) {
             if (current == null && frozen.getDrawable() == null) dream.setMode(DreamView.CLOCK);
@@ -178,6 +184,9 @@ final class ScreensaverStage extends FrameLayout {
         last = s.clip;
         dream.setCaption(s.clip.clip.place);
         dream.setMode(DreamView.VIDEO);
+        handler.removeCallbacks(change);
+        int minutes = Prefs.saverSwitch();
+        if (minutes > 0) handler.postDelayed(change, minutes * 60_000L);
         s.view.animate().alpha(1f).setDuration(FADE_MS).withEndAction(() -> {
             if (s == current) frozen.setImageDrawable(null);
         }).start();
@@ -185,6 +194,7 @@ final class ScreensaverStage extends FrameLayout {
 
     /** A clip ended: keep its last frame as a picture, let go of its player, and start the next one. */
     private void ended(Slot s) {
+        handler.removeCallbacks(change);
         try {
             Bitmap frame = s.view.getBitmap(960, 540);
             if (frame != null) frozen.setImageBitmap(frame);

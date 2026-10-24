@@ -586,7 +586,7 @@ public class SettingsActivity extends Activity {
                         adjust(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     } else if (down && screen == SAVER_SETTINGS) {
-                        if (focus < 6) adjustSaver(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        if (focus < 6 || focus > 7) adjustSaver(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     }
                     return true;
@@ -631,6 +631,7 @@ public class SettingsActivity extends Activity {
 
         private static final String[] LANGUAGES = {"auto", "pt", "en", "es", "de", "ru"}, UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"}, SAVERS = {"aerial", "photos", "clock"}, BACKGROUNDS = {"auto", "apple", "plain"};
         private static final int[] DELAYS = {0, 1, 2, 5, 10, 15, 30};
+        private static final int[] SWITCHES = {0, 1, 2, 5, 10};
         /** Home Settings: language, temperature, theme, weather, quotes, then one row per coin. */
         private static final int CITY_ROW = 4, COIN_ROWS = 6;
 
@@ -757,7 +758,8 @@ public class SettingsActivity extends Activity {
                     Ui.tr("Tela de descanso", "Screensaver"), Ui.tr("Lugar da tela de descanso", "Screensaver place"),
                     Ui.tr("Começa depois de", "Starts after"), Ui.tr("Fundo", "Background"),
                     Ui.tr("Lugar do fundo", "Background place"),
-                    Ui.tr("Atualizar as fotos", "Update photos"), Ui.tr("Liberar espaço", "Free up space")};
+                    Ui.tr("Atualizar as fotos", "Update photos"), Ui.tr("Liberar espaço", "Free up space"),
+                    Ui.tr("Trocar o vídeo a cada", "Change video every")};
         }
 
         private String[] saverValues() {
@@ -773,7 +775,9 @@ public class SettingsActivity extends Activity {
                     placeLabel(Prefs.backgroundPlace()),
                     photosValue(), AerialStore.get(getContext()).size() >> 20 == 0
                             ? Ui.tr("Nada baixado", "Nothing downloaded")
-                            : Ui.tr("Apagar vídeos, ", "Delete videos, ") + (AerialStore.get(getContext()).size() >> 20) + " MB"};
+                            : Ui.tr("Apagar vídeos, ", "Delete videos, ") + (AerialStore.get(getContext()).size() >> 20) + " MB",
+                    Prefs.saverSwitch() == 0 ? Ui.tr("No fim do vídeo", "When it ends")
+                            : Prefs.saverSwitch() + (Ui.ru ? " мин" : " min")};
         }
 
         /** "12 photos, 3 days ago", or that new ones are on the way. */
@@ -841,6 +845,12 @@ public class SettingsActivity extends Activity {
                 case 7:
                     AerialStore.get(getContext()).clear();
                     break;
+                case 8: {
+                    int at = 0;
+                    for (int i = 0; i < SWITCHES.length; i++) if (SWITCHES[i] == Prefs.saverSwitch()) at = i;
+                    Prefs.setSaverSwitch(SWITCHES[step(at, dir, SWITCHES.length)]);
+                    break;
+                }
                 default:
                     break;
             }

@@ -126,6 +126,8 @@ final class German {
             case "Downloading…": return "Lädt…";
             case "None yet": return "Noch keine";
             case "today": return "heute";
+            case "Change video every": return "Video wechseln alle";
+            case "When it ends": return "Am Ende des Videos";
             case "Starts after": return "Startet nach";
             case "TV's setting": return "Wie im Fernseher";
             case "Any": return "Beliebig";

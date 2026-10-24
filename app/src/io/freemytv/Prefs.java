@@ -114,6 +114,13 @@ final class Prefs {
     static long stillsAt() { return sp().getLong("stillsAt", 0); }
     static void setStillsAt(long t) { sp().edit().putLong("stillsAt", t).apply(); }
 
+    /** Minutes after which the screensaver goes on to another clip (0 = when the clip ends). */
+    static int saverSwitch() { return sp().getInt("saverSwitch", 0); }
+    static void setSaverSwitch(int minutes) {
+        sp().edit().putInt("saverSwitch", minutes).apply();
+        version++;
+    }
+
     // MARK: - City
 
     static String city() { return sp().getString("city", Config.CITY).trim(); }
