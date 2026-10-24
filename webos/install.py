@@ -41,9 +41,12 @@ def lock(path):
     os.chmod(path, 0o600)
     if os.name != 'nt':
         return
-    # By SID, not name: a domain PC that lost its trust with the domain can't resolve names.
-    sid = subprocess.run(['whoami', '/user', '/fo', 'csv', '/nh'], capture_output=True, text=True).stdout.strip().split(',')[-1].strip('"')
-    subprocess.run(['icacls', path, '/inheritance:r', '/grant:r', '*%s:F' % sid], capture_output=True)
+    # By SID, not name: a domain PC that lost its trust with the domain can't resolve names. As bytes: whoami writes in
+    # the console's code page, which a user name with accents may not decode from.
+    out = subprocess.run(['whoami', '/user', '/fo', 'csv', '/nh'], capture_output=True).stdout
+    sid = re.search(rb'S-1-[0-9-]+', out)
+    if sid:
+        subprocess.run(['icacls', path, '/inheritance:r', '/grant:r', '*%s:F' % sid.group().decode()], capture_output=True)
 
 
 def fetch_key(ip):
