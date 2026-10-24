@@ -196,7 +196,9 @@ final class HomeMode {
             while (android.os.SystemClock.elapsedRealtime() < end) {
                 String top = adb.shell("dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity'");
                 if (top.contains("io.freemytv")) return;                       // ours is up already
-                onLauncher = top.contains("com.tvfengmi.launcher") ? onLauncher + 1 : 0;
+                // The projector shows its own board (com.formovie.launchboard) or the Fengmi launcher after boot.
+                boolean stock = top.contains("com.tvfengmi.launcher") || top.contains("com.formovie.launchboard");
+                onLauncher = stock ? onLauncher + 1 : 0;
                 if (onLauncher >= 2) {                                          // settled on the projector's launcher
                     openHome(app);
                     return;
