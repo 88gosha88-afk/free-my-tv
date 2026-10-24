@@ -86,6 +86,11 @@ final class Recs {
         {"crunchyroll", "crunchyroll", "com.crunchyroll.crunchyroid"},
         {"now tv", "now", "com.bskyb.nowtv.beta"},     // UK: Sky's NOW (TMDB: "Now TV", "Now TV Cinema")
         {"oneplay", "oneplay", "net.cme.voyo.cz.tvapp"},    // Czechia: Voyo and O2 TV became Oneplay, same app
+        // Russia (TMDB's watch providers for RU)
+        {"kinopoisk", "kinopoisk", "ru.kinopoisk.tv"},
+        {"premier", "premier", "gpm.tnt_premier"},
+        {"amediateka", "amediateka", "ru.amediateka"},
+        {"more tv", "wink", "ru.rt.video.app.tv"},   // TMDB: "More TV" (more.tv is part of Rostelecom's Wink now)
     };
     private static final Map<String, String> SERVICE_NAME = new HashMap<>();
     static {
@@ -103,6 +108,10 @@ final class Recs {
         SERVICE_NAME.put("crunchyroll", "Crunchyroll");
         SERVICE_NAME.put("now", "NOW");
         SERVICE_NAME.put("oneplay", "Oneplay");
+        SERVICE_NAME.put("kinopoisk", "Кинопоиск");
+        SERVICE_NAME.put("premier", "Premier");
+        SERVICE_NAME.put("amediateka", "Амедиатека");
+        SERVICE_NAME.put("wink", "Wink");
     }
     /** Country for "what streams where" (config.properties "tmdb_region", e.g. US, GB, BR). */
     static final String REGION = Place.region();
