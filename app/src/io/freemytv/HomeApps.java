@@ -103,7 +103,7 @@ final class HomeApps {
         {"hulu", "Hulu", "com.hulu.livingroomplus", "1CE783", "", "1"},
         {"hulu", "Hulu", "com.hulu.plus", "1CE783", "", "1"},
         {"paramount", "Paramount+", "com.cbs.ott", "0064FF", "", "1"},
-        {"paramount", "Paramount+", "com.cbs.ca", "0064FF", "", "1"},          // the build on Sony TVs in the UK
+        {"paramount", "Paramount+", "com.cbs.ca", "0064FF", "", "1"},          // Paramount+ outside the US (a Sony in the UK; Canada)
         {"now", "NOW", "com.bskyb.nowtv.beta", "1B9C8E", "", "1"},              // UK: Sky's NOW
         {"peacock", "Peacock", "com.peacocktv.peacockandroid", "6E55DC", "", "1"},
         {"peacock", "Peacock", "com.peacock.peacockfiretv", "6E55DC", "", "1"},
@@ -622,7 +622,7 @@ final class HomeApps {
     }
 
     private static int tunerRank(String id) {
-        String s = id.toLowerCase(java.util.Locale.ROOT);
+        String s = id.toLowerCase(Locale.ROOT);
         return s.contains("analog") ? 2 : s.contains("cable") ? 1 : 0;
     }
 

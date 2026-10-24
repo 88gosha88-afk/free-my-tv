@@ -72,7 +72,7 @@ final class Recs {
         {"hulu", "hulu", "com.hulu.livingroomplus"},
         {"hulu", "hulu", "com.hulu.plus"},
         {"paramount", "paramount", "com.cbs.ott"},
-        {"paramount", "paramount", "com.cbs.ca"},      // the build on Sony TVs in the UK (and in Canada)
+        {"paramount", "paramount", "com.cbs.ca"},      // Paramount+ outside the US (a Sony in the UK; Canada)
         {"peacock", "peacock", "com.peacocktv.peacockandroid"},
         {"peacock", "peacock", "com.peacock.peacockfiretv"},
         {"globoplay", "globoplay", "com.globo.globotv"},
