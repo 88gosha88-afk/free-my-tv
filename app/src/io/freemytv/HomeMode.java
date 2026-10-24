@@ -184,7 +184,40 @@ final class HomeMode {
         }
     }
 
+    /**
+     * Opens our home screen once the projector's own launcher is on screen (it comes up a while after boot and would
+     * cover ours if we were early): looks at the top activity through the TV's ADB every 3 seconds, for up to 2 minutes.
+     * If ADB can't be used (the projector hasn't been told to allow it), opens it twice instead, 15 and 40 seconds in.
+     */
     static void openHomeNow(Context app) {
+        try (Adb adb = Adb.connect(app, 10_000, null)) {
+            long end = android.os.SystemClock.elapsedRealtime() + 120_000;
+            int onLauncher = 0;
+            while (android.os.SystemClock.elapsedRealtime() < end) {
+                String top = adb.shell("dumpsys activity activities | grep -E 'mResumedActivity|ResumedActivity'");
+                if (top.contains("io.freemytv")) return;                       // ours is up already
+                onLauncher = top.contains("com.tvfengmi.launcher") ? onLauncher + 1 : 0;
+                if (onLauncher >= 2) {                                          // settled on the projector's launcher
+                    openHome(app);
+                    return;
+                }
+                Thread.sleep(3_000);
+            }
+            AppLog.w("open home at boot: the projector's launcher never showed");
+        } catch (IOException e) {
+            AppLog.w("open home at boot, without ADB: " + e.getMessage());
+            try {
+                Thread.sleep(15_000);
+                openHome(app);
+                Thread.sleep(25_000);
+                openHome(app);
+            } catch (InterruptedException ignored) {
+            }
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    private static void openHome(Context app) {
         try {
             app.startActivity(new android.content.Intent(app, HomeActivity.class)
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP));

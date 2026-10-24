@@ -11,7 +11,7 @@ public class HomeReceiver extends BroadcastReceiver {
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
             HomeMode.bootCheck(context);
             // A projector whose firmware won't take another home screen: open ours a few seconds after its own.
-            if (HomeMode.projectorWithOwnHome(context)) ModeJob.schedule(context, ModeJob.OPEN_HOME, "", 12_000);
+            if (HomeMode.projectorWithOwnHome(context)) ModeJob.schedule(context, ModeJob.OPEN_HOME, "", 8_000);
         } else if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             HomeMode.verify(context);   // app updated: complete Free My TV mode if something is missing
             HomeMode.ensureRemoteService(context, 3_000);
