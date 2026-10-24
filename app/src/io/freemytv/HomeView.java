@@ -278,6 +278,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private HomeData.Weather textWeather;
     private long textPricesAt = -1, textMinute = -1;
     private int textPrefs = -1;
+    private boolean clock24;
     private String textLanguage;
     private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText, staleText;
     private final String[] hourText = new String[6], hourTempText = new String[6];
@@ -416,6 +417,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (running) return;
         running = true;
         checkNight(false);
+        boolean h24 = Prefs.clock24();
+        if (h24 != clock24) {   // 12/24 hours changed in the TV's settings: the clock and the drawer's times again
+            clock24 = h24;
+            clockMinute = -1;
+            textPrefs = -1;
+        }
         long now = SystemClock.uptimeMillis();
         // Some remotes (Xiaomi's) send one Home press as a burst of 5 to 8, and each one pauses and resumes the home
         // screen: those after the first change nothing, so the lists are read only once.
