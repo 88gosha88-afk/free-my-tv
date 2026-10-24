@@ -82,11 +82,11 @@ final class Recs {
         {"apple tv", "appletv", "com.apple.atve.sony.appletv"},   // Sony's own build
         {"apple tv", "appletv", "com.apple.atve.amazon.appletv"},
         {"hotstar", "hotstar", "in.startv.hotstar"},   // TMDB: "JioHotstar" (earlier "Disney Plus Hotstar")
-        {"okko", "okko", "ru.more.play"},
         {"crunchyroll", "crunchyroll", "com.crunchyroll.crunchyroid"},
         {"now tv", "now", "com.bskyb.nowtv.beta"},     // UK: Sky's NOW (TMDB: "Now TV", "Now TV Cinema")
         {"oneplay", "oneplay", "net.cme.voyo.cz.tvapp"},    // Czechia: Voyo and O2 TV became Oneplay, same app
         // Russia (TMDB's watch providers for RU)
+        {"okko", "okko", "ru.more.play"},
         {"kinopoisk", "kinopoisk", "ru.kinopoisk.tv"},
         {"premier", "premier", "gpm.tnt_premier"},
         {"amediateka", "amediateka", "ru.amediateka"},
