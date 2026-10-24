@@ -78,6 +78,33 @@ final class SleepTimer {
         }, new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF));
     }
 
+    /**
+     * The same when no process was there to hear it (Android stopped :home under another app, and the pill was off): when
+     * :home starts again with a timer running, asks the TV whether it was turned off since, and whether the alarm is still
+     * there (a Force stop takes it away), in :home.
+     */
+    static void check(Context c) {
+        if (minutesLeft(c) == 0) return;
+        long from = Prefs.sleepFrom();
+        Context app = c.getApplicationContext();
+        new Thread(() -> {
+            try (Adb adb = Adb.connect(app, 0, null)) {
+                if (sleptSince(adb, from) || !adb.shell("dumpsys alarm").contains(ACTION)) {
+                    AppLog.w("Sleep timer: the TV was turned off since, or the alarm is gone: timer ended");
+                    stop(app);
+                }
+            } catch (IOException e) {
+                AppLog.w("Sleep timer: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /** Whether the TV was turned off after `from` (uptimeMillis). Leaving the screensaver isn't waking up. */
+    private static boolean sleptSince(Adb adb, long from) throws IOException {
+        Matcher m = LAST_SLEEP.matcher(adb.shell("dumpsys power"));
+        return m.find() && Long.parseLong(m.group(1)) > from;
+    }
+
     /** 45 min, 1 h, 1 h 30 min: the timer's times, in the list and as they run down. */
     static String duration(int minutes) {
         return minutes < 60 ? Ui.trf("{n} min", "n", minutes) : minutes % 60 == 0 ? Ui.trf("{n} h", "n", minutes / 60)
@@ -87,11 +114,12 @@ final class SleepTimer {
     /** Starts the timer for `minutes` from now; 0 stops it (Settings, in :home). The pill follows (SleepOverlay.update). */
     static void set(Context c, int minutes) {
         cancel(c);
-        Prefs.setSleepAt(minutes == 0 ? 0 : System.currentTimeMillis() + minutes * 60_000L);
+        long from = SystemClock.uptimeMillis();
+        Prefs.setSleepAt(minutes == 0 ? 0 : System.currentTimeMillis() + minutes * 60_000L, from);
         if (minutes > 0) {
             AlarmManager am = c.getSystemService(AlarmManager.class);
             long at = SystemClock.elapsedRealtime() + minutes * 60_000L;
-            PendingIntent alarm = alarm(c, SystemClock.uptimeMillis(), 0);
+            PendingIntent alarm = alarm(c, from, 0);
             try {
                 am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, alarm);
             } catch (SecurityException e) {   // Android 12 with exact alarms turned off for it: up to 10 minutes late
@@ -106,8 +134,7 @@ final class SleepTimer {
     static void fire(Context c, long setAt) {
         if (!c.getSystemService(PowerManager.class).isInteractive()) return;
         try (Adb adb = Adb.connect(c, 0, null)) {
-            Matcher m = LAST_SLEEP.matcher(adb.shell("dumpsys power"));
-            if (m.find() && Long.parseLong(m.group(1)) > setAt) {
+            if (sleptSince(adb, setAt)) {
                 AppLog.w("Sleep timer: the TV was turned off since, left on");
                 return;
             }

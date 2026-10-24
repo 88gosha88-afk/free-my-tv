@@ -210,7 +210,7 @@ final class Ui {
     }
 
     /** After the language changes in the settings (and once Prefs can read them). */
-    static void applyLanguage() {
+    static synchronized void applyLanguage() {
         applyLanguage(Prefs.language());
     }
 

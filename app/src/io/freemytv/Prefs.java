@@ -171,8 +171,11 @@ final class Prefs {
     /** When the sleep timer ends (System.currentTimeMillis); SleepTimer's alarm says whether it's still on. */
     static long sleepAt() { return sp().getLong("sleepAt", 0); }
 
-    static void setSleepAt(long at) {
-        sp().edit().putLong("sleepAt", at).apply();
+    /** When it was set, in uptimeMillis (dumpsys power's clock): a TV turned off since ended it (SleepTimer.check). */
+    static long sleepFrom() { return sp().getLong("sleepFrom", 0); }
+
+    static void setSleepAt(long at, long from) {
+        sp().edit().putLong("sleepAt", at).putLong("sleepFrom", from).apply();
         version++;
     }
 

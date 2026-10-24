@@ -53,6 +53,8 @@ public class SettingsActivity extends Activity {
         if (openFireHome(getIntent())) return;
         Watchdog.install(this);
         Ui.init(this);
+        SleepTimer.listen(this);   // :home may start here, from the launcher icon
+        SleepTimer.check(this);
         view = new SettingsView(this);
         setContentView(view);
     }
