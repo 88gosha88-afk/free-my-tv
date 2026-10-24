@@ -50,6 +50,8 @@ var Prefs = (function () {
     quotes: function () { return pick('quotes', CONFIG.showCrypto !== false); },
     coin: function (i) { var c = pick('coins', null); return c ? c[i] !== false : true; },
     shelf: function () { return pick('shelf', null); },
+    /** The shelf_apps of the build that last set the shelf, so a new one wins once over the TV's choice. */
+    shelfConfig: function () { return pick('shelfConfig', ''); },
     set: function (name, value) { v[name] = value; save(); this.version++; },
     setCoin: function (i, on) {
       var c = (pick('coins', null) || [true, true, true, true]).slice();
