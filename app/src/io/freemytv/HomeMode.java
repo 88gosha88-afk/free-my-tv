@@ -170,6 +170,30 @@ final class HomeMode {
         }
     }
 
+    /**
+     * Fengmi / Formovie projectors (Android 9) don't let another app be the home screen (set-home-activity answers
+     * "cannot be home"): the stock launcher stays, and at boot we open ours on top of it.
+     */
+    static boolean projectorWithOwnHome(Context c) {
+        if (FREE.equals(state(c).optString("mode"))) return false;   // there Free My TV is the home screen itself
+        try {
+            c.getPackageManager().getPackageInfo("com.tvfengmi.launcher", 0);
+            return true;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    static void openHomeNow(Context app) {
+        try {
+            app.startActivity(new android.content.Intent(app, HomeActivity.class)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            AppLog.w("opened the Free My TV home screen at boot");
+        } catch (RuntimeException e) {
+            AppLog.w("open home at boot: " + e.getMessage());
+        }
+    }
+
     static void ensureRemoteServiceNow(Context app) {
         if (!RemoteKeys.supported() || !FREE.equals(state(app).optString("mode"))) return;
         try (Adb adb = Adb.connect(app, 10_000, null)) {
