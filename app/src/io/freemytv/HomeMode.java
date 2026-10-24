@@ -160,6 +160,11 @@ final class HomeMode {
             adb.shell("settings put system screen_off_timeout " + (m * 60_000L));
             AppLog.w("screensaver starts after " + m + " min (now "
                     + adb.shell("settings get system screen_off_timeout").trim() + " ms)");
+            // What else the TV has about it, for finding out why a TV doesn't follow the setting.
+            for (String key : new String[] {"secure sleep_timeout", "secure screensaver_enabled", "secure screensaver_components",
+                    "secure screensaver_activate_on_sleep", "secure screensaver_activate_on_dock"}) {
+                AppLog.w("tv " + key + " = " + adb.shell("settings get " + key).trim());
+            }
         } catch (IOException e) {
             AppLog.w("screensaver delay: " + e.getMessage());
         }

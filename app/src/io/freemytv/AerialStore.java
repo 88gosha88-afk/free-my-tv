@@ -30,7 +30,7 @@ import javax.net.ssl.TrustManagerFactory;
  * stopped. The cache folder is the system's to empty when the TV needs space; the clips then download again.
  */
 final class AerialStore {
-    static final int KEEP = 3, MAX_FILES = 6;
+    static final int KEEP = 2, MAX_FILES = 4;
     private static final long MIN_FREE = 400L << 20;
 
     interface Callback {
@@ -64,6 +64,8 @@ final class AerialStore {
     private volatile Callback callback;
     private volatile boolean cancelled;
     private volatile String wantPlace = "";
+    private volatile String harvestPlace;
+    private volatile boolean saverWanted;
     private Thread worker;
     private SSLSocketFactory appleSockets;
 
@@ -116,8 +118,22 @@ final class AerialStore {
     synchronized void download(Callback cb, String place) {
         if (cb != null) callback = cb;
         wantPlace = place == null ? "" : place;
-        if (worker != null && worker.isAlive()) return;
         if (cached(wantPlace).size() >= KEEP) return;
+        saverWanted = true;
+        startWorker();
+    }
+
+    /**
+     * Gets new photos for the home screen's background (Stills) from a clip of `place` that has none yet: it is downloaded,
+     * three or four frames are saved, and it is deleted again unless the screensaver wants it.
+     */
+    synchronized void harvest(String place) {
+        harvestPlace = place == null ? "" : place;
+        startWorker();
+    }
+
+    private synchronized void startWorker() {
+        if (worker != null) return;
         cancelled = false;
         worker = new Thread(this::run, "aerials");
         worker.setPriority(Thread.MIN_PRIORITY);
@@ -133,12 +149,47 @@ final class AerialStore {
         cancelled = true;
     }
 
+    /** Deletes every downloaded video (and half-done one); the background photos stay. */
+    void clear() {
+        cancelled = true;
+        File[] files = dir.listFiles();
+        if (files != null) for (File f : files) f.delete();
+    }
+
+    /** Whether a download (of videos or of photos) is going on. */
+    synchronized boolean busy() {
+        return worker != null;
+    }
+
+    /** The disk the videos use, in bytes. */
+    long size() {
+        long total = 0;
+        File[] files = dir.listFiles();
+        if (files != null) for (File f : files) total += f.length();
+        return total;
+    }
+
     private void run() {
         int failures = 0;
         java.util.Set<String> failed = new java.util.HashSet<>();
         while (!cancelled) {
+            synchronized (this) {
+                if (harvestPlace == null && !saverWanted) {
+                    worker = null;
+                    return;
+                }
+            }
+            String hp = harvestPlace;
+            if (hp != null) {
+                harvestPlace = null;
+                harvestOne(hp);
+                continue;
+            }
             String place = wantPlace;
-            if (cached(place).size() >= KEEP) return;
+            if (cached(place).size() >= KEEP) {
+                saverWanted = false;
+                continue;
+            }
             Aerials.Clip next = null;
             for (Aerials.Clip clip : Aerials.shuffled(app)) {
                 if (clip.isFrom(place) && !fileOf(clip).isFile() && !failed.contains(clip.file())) {
@@ -146,25 +197,66 @@ final class AerialStore {
                     break;
                 }
             }
-            if (next == null) return;       // every clip from there is on disk (or failed): nothing more to fetch
+            if (next == null) {            // every clip from there is on disk (or failed): nothing more to fetch
+                saverWanted = false;
+                continue;
+            }
             if (dir.getUsableSpace() < MIN_FREE) makeRoom(place);
             if (dir.getUsableSpace() < MIN_FREE) {
                 AppLog.w("aerials: not enough free space (" + (dir.getUsableSpace() >> 20) + " MB free)");
                 if (cached(place).isEmpty()) post(false);   // something to play already: no need to give up
-                return;
+                saverWanted = false;
+                continue;
             }
             if (fetch(next, fileOf(next))) {
                 failures = 0;
+                Stills.harvest(app, next, fileOf(next));
                 prune(place);
                 post(true);
             } else {
                 failed.add(next.file());
                 if (!cancelled && ++failures >= 3) {
                     post(false);
-                    return;
+                    saverWanted = false;
                 }
             }
         }
+        synchronized (this) {
+            saverWanted = false;
+            harvestPlace = null;
+            worker = null;
+        }
+    }
+
+    private void harvestOne(String place) {
+        Aerials.Clip pick = null;
+        boolean onDisk = false;
+        for (Aerials.Clip clip : Aerials.shuffled(app)) {            // one without photos, preferring one already here
+            if (!clip.isFrom(place) || Stills.has(app, clip)) continue;
+            boolean here = fileOf(clip).isFile() && fileOf(clip).length() > 0;
+            if (pick == null || (here && !onDisk)) {
+                pick = clip;
+                onDisk = here;
+            }
+        }
+        if (pick == null) {                                          // all of them have photos already
+            Prefs.setStillsAt(System.currentTimeMillis());
+            return;
+        }
+        File file = fileOf(pick);
+        if (!onDisk) {
+            if (dir.getUsableSpace() < MIN_FREE) makeRoom(place);
+            if (dir.getUsableSpace() < MIN_FREE) {
+                AppLog.w("photos: not enough free space (" + (dir.getUsableSpace() >> 20) + " MB free)");
+                return;
+            }
+            if (!fetch(pick, file)) return;
+        }
+        boolean ok = Stills.harvest(app, pick, file);
+        boolean wanted = Prefs.screensaver().equals("aerial") && pick.isFrom(Prefs.saverPlace())
+                && cached(Prefs.saverPlace()).size() <= KEEP;
+        if (!onDisk && !wanted) file.delete();
+        if (ok) main.post(() -> Ambient.get(app).stillsChanged());
     }
 
     /**

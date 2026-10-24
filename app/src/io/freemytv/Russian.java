@@ -118,6 +118,13 @@ final class Russian {
             case "Preview the screensaver": return "Предпросмотр заставки";
             case "Screensaver place": return "Место для заставки";
             case "Background place": return "Место для фона";
+            case "Update photos": return "Обновить фото";
+            case "Free up space": return "Освободить место";
+            case "Nothing downloaded": return "Ничего не загружено";
+            case "Delete videos, ": return "Удалить видео, ";
+            case "Downloading…": return "Загрузка…";
+            case "None yet": return "Пока нет";
+            case "today": return "сегодня";
             case "Starts after": return "Включается через";
             case "TV's setting": return "Как в ТВ";
             case "Any": return "Любое";

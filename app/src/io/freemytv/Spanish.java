@@ -111,6 +111,13 @@ final class Spanish {
             case "Preview the screensaver": return "Vista previa del protector";
             case "Screensaver place": return "Lugar del protector";
             case "Background place": return "Lugar del fondo";
+            case "Update photos": return "Actualizar fotos";
+            case "Free up space": return "Liberar espacio";
+            case "Nothing downloaded": return "Nada descargado";
+            case "Delete videos, ": return "Borrar vídeos, ";
+            case "Downloading…": return "Descargando…";
+            case "None yet": return "Aún ninguna";
+            case "today": return "hoy";
             case "Starts after": return "Empieza tras";
             case "TV's setting": return "El de la TV";
             case "Any": return "Cualquiera";

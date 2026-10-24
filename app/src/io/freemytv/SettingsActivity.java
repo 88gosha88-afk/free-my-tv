@@ -586,7 +586,7 @@ public class SettingsActivity extends Activity {
                         adjust(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     } else if (down && screen == SAVER_SETTINGS) {
-                        adjustSaver(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                        if (focus < 6) adjustSaver(e.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
                         invalidate();
                     }
                     return true;
@@ -756,7 +756,8 @@ public class SettingsActivity extends Activity {
             return new String[] {Ui.tr("Ver a tela de descanso", "Preview the screensaver"),
                     Ui.tr("Tela de descanso", "Screensaver"), Ui.tr("Lugar da tela de descanso", "Screensaver place"),
                     Ui.tr("Começa depois de", "Starts after"), Ui.tr("Fundo", "Background"),
-                    Ui.tr("Lugar do fundo", "Background place")};
+                    Ui.tr("Lugar do fundo", "Background place"),
+                    Ui.tr("Atualizar as fotos", "Update photos"), Ui.tr("Liberar espaço", "Free up space")};
         }
 
         private String[] saverValues() {
@@ -769,7 +770,21 @@ public class SettingsActivity extends Activity {
                     delay == 0 ? Ui.tr("Da TV", "TV's setting") : delay + (Ui.ru ? " мин" : " min"),
                     background.equals("apple") ? Ui.tr("Fotos da Apple", "Apple photos")
                             : background.equals("plain") ? Ui.tr("Gradiente", "Gradient") : Ui.tr("Automático", "Automatic"),
-                    placeLabel(Prefs.backgroundPlace())};
+                    placeLabel(Prefs.backgroundPlace()),
+                    photosValue(), AerialStore.get(getContext()).size() >> 20 == 0
+                            ? Ui.tr("Nada baixado", "Nothing downloaded")
+                            : Ui.tr("Apagar vídeos, ", "Delete videos, ") + (AerialStore.get(getContext()).size() >> 20) + " MB"};
+        }
+
+        /** "12 photos, 3 days ago", or that new ones are on the way. */
+        private String photosValue() {
+            Context c = getContext();
+            if (AerialStore.get(c).busy()) return Ui.tr("Baixando…", "Downloading…");
+            int n = Ambient.get(c).count();
+            if (n == 0) return Ui.tr("Nenhuma ainda", "None yet");
+            long days = (System.currentTimeMillis() - Prefs.stillsAt()) / 86_400_000L;
+            return n + (Ui.ru ? " фото, " : " photos, ") + (days <= 0 ? Ui.tr("hoje", "today")
+                    : days + (Ui.ru ? " дн. назад" : " d ago"));
         }
 
         private String placeLabel(String place) {
@@ -807,7 +822,7 @@ public class SettingsActivity extends Activity {
                     int minutes = DELAYS[step(at, dir, DELAYS.length)];
                     Prefs.setSaverDelay(minutes);
                     // Sent to the TV a few seconds after the last change (a new request replaces the one waiting).
-                    if (minutes > 0) ModeJob.schedule(getContext(), ModeJob.TIMEOUT, String.valueOf(minutes), 3000);
+                    if (minutes > 0) ModeJob.schedule(getContext(), ModeJob.TIMEOUT, String.valueOf(minutes), 1500);
                     break;
                 }
                 case 4: {
@@ -820,6 +835,12 @@ public class SettingsActivity extends Activity {
                     Prefs.setBackgroundPlace(places.get(step(places.indexOf(Prefs.backgroundPlace()), dir, places.size())));
                     break;
                 }
+                case 6:
+                    Ambient.get(getContext()).fetchNew(true);   // a clip is downloaded, photos taken from it, the clip deleted
+                    break;
+                case 7:
+                    AerialStore.get(getContext()).clear();
+                    break;
                 default:
                     break;
             }

@@ -119,6 +119,13 @@ final class German {
             case "Preview the screensaver": return "Vorschau des Bildschirmschoners";
             case "Screensaver place": return "Ort des Bildschirmschoners";
             case "Background place": return "Ort des Hintergrunds";
+            case "Update photos": return "Fotos aktualisieren";
+            case "Free up space": return "Speicher freigeben";
+            case "Nothing downloaded": return "Nichts geladen";
+            case "Delete videos, ": return "Videos löschen, ";
+            case "Downloading…": return "Lädt…";
+            case "None yet": return "Noch keine";
+            case "today": return "heute";
             case "Starts after": return "Startet nach";
             case "TV's setting": return "Wie im Fernseher";
             case "Any": return "Beliebig";

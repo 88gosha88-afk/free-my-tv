@@ -110,6 +110,10 @@ final class Prefs {
         version++;
     }
 
+    /** When the background photos (Stills) were last renewed, in milliseconds since 1970 (0 = never). */
+    static long stillsAt() { return sp().getLong("stillsAt", 0); }
+    static void setStillsAt(long t) { sp().edit().putLong("stillsAt", t).apply(); }
+
     // MARK: - City
 
     static String city() { return sp().getString("city", Config.CITY).trim(); }
