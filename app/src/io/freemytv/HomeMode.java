@@ -56,6 +56,13 @@ final class HomeMode {
      * (Android 9) has the same setup app without a home screen: there it is left alone.
      */
     static final String GOOGLE_SETUP = "com.google.android.tungsten.setupwraith";
+    /**
+     * Some HY300 projectors (Amlogic txhd2, Android 13) answer the Home button with JmLauncher, not the default home:
+     * it opens the package in JM_HOME, else the HTC home screen, and with that one off and the property empty, a black
+     * screen. Their adb shell runs as root, so the switch can set the property.
+     */
+    static final String JM_LAUNCHER = "com.jm.jmlauncher", JM_HOME = "persist.sys.home.selectpkg";
+    static final String HTC_HOME = "com.htc.htclauncherhighenglishd08";
 
     /**
      * Turned off in Free My TV mode, when the TV has them. Google extras first, then TV-maker extras (TCL here; add
@@ -84,6 +91,9 @@ final class HomeMode {
         // KTC (NextStar; MediaTek)
         "tv.anoki.acr.controller",                                                    // Anoki ACR: watches what's on screen
         "com.mediatek.tv.retaildemo", "com.electronic.manual",                        // store demo, manual
+        // HY300 projectors (Amlogic txhd2, Android 13): JmLauncher opens it from the Home button (JM_HOME); off only
+        // once JM_HOME is ours
+        HTC_HOME,                                                                     // the stock home (and an ad SDK)
     };
 
     /** The voice assistant, only with disable_assistant=true in config.properties (the mic button stops working). */
@@ -314,6 +324,9 @@ final class HomeMode {
             latest.put("originalHome", home).put("originalDream", dream);
             String saver = adb.shell("settings get secure screensaver_components").trim();
             if (!saver.contains(PKG + "/")) latest.put("originalScreensaver", safeComponents(saver));
+            boolean jm = hasJm(adb);
+            String jmBefore = jm ? jmHome(adb) : "";
+            if (jm && !jmBefore.equals(PKG)) latest.put("originalJmHome", jmBefore.matches("[\\w.]*") ? jmBefore : "");
             save(c, latest);
             // Turning off an app makes Android delete the Wi-Fi networks it saved (#14), and Original can't bring them
             // back. The TV's first setup usually saved the network: then stop here, before anything changes.
@@ -341,6 +354,8 @@ final class HomeMode {
             check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
                     Ui.tr("Android didn't accept the new home screen"));
             adb.shell("settings put secure screensaver_components " + DREAM);
+            boolean jmOurs = !jm || setJmHome(adb, PKG);
+            if (!jmOurs) AppLog.w("JmLauncher keeps the Home button: " + JM_HOME + " didn't take");
             JSONObject started = state(c);
             started.put("mode", FREE).put("homeReverted", false).put("setupHome", setupHome);
             save(c, started);
@@ -377,6 +392,7 @@ final class HomeMode {
                     AppLog.w("kept the TV's home screen on: Google TV's setup app is still on");
                     continue;
                 }
+                if (pkg.equals(HTC_HOME) && !jmOurs) continue;
                 String out = adb.shell("pm disable-user --user 0 " + pkg);
                 if (out.contains("disabled-user")) {
                     if (pkg.equals(GOOGLE_SETUP)) setupOn = false;
@@ -440,6 +456,7 @@ final class HomeMode {
             }
             busy(c, Ui.tr("Restoring the original home screen…"));
             boolean homeOk = restoreHome(adb, home);
+            if (hasJm(adb) && !setJmHome(adb, s.optString("originalJmHome", ""))) homeOk = false;
             if (setupBack) {
                 if (homeOk && adb.shell("pm enable " + GOOGLE_SETUP).contains("new state: enabled")) {
                     homeOk = restoreHome(adb, home);    // a new home screen candidate can drop the default one
@@ -538,10 +555,16 @@ final class HomeMode {
                 }
                 String homePkg = packageOf(home), dreamPkg = packageOf(originalDream(s));
                 if (dreamPkg != null && !keptOff.contains(dreamPkg)) adb.shell("pm enable " + dreamPkg);
+                // With JmLauncher, Home opens the HTC home screen once the property is back: both, or a black screen.
+                boolean jm = hasJm(adb);
+                if (jm) {
+                    adb.shell("pm enable " + HTC_HOME);
+                    setJmHome(adb, s.optString("originalJmHome", ""));
+                }
                 JSONArray kept = new JSONArray();
                 Set<String> stillOff = new HashSet<>();
                 for (String pkg : stringList(s, "disabled")) {
-                    if (!pkg.equals(GOOGLE_SETUP) && !pkg.equals(homePkg) && !pkg.equals(dreamPkg)) {
+                    if (!pkg.equals(GOOGLE_SETUP) && !pkg.equals(homePkg) && !pkg.equals(dreamPkg) && !(jm && pkg.equals(HTC_HOME))) {
                         kept.put(pkg);
                         stillOff.add(pkg);
                     }
@@ -625,10 +648,20 @@ final class HomeMode {
                     }
                 }
                 if (!back.isEmpty()) notice(app, Ui.trf("Turned back on {list}: the TV's inputs or remote need it.", "list", String.join(", ", back)));
+                // JmLauncher: the HTC home screen goes off only while the Home button opens ours.
+                boolean jmOurs = true;
+                if (hasJm(adb)) {
+                    jmOurs = !reverted && (PKG.equals(jmHome(adb)) || setJmHome(adb, PKG));
+                    if (!jmOurs && disabledNow.contains(HTC_HOME) && adb.shell("pm enable " + HTC_HOME).contains("new state: enabled")) {
+                        disabled.remove(HTC_HOME);
+                        disabledNow.remove(HTC_HOME);
+                    }
+                }
                 boolean setupOn = present.contains(GOOGLE_SETUP) && !disabledNow.contains(GOOGLE_SETUP)
                         && s.optBoolean("setupHome", true);
                 for (String pkg : order) {
                     if (!mayTurnOff(pkg) || !present.contains(pkg) || owners.contains(pkg) || wait.contains(pkg)) continue;
+                    if (pkg.equals(HTC_HOME) && !jmOurs) continue;
                     if (disabledNow.contains(pkg)) {
                         if (!keptOff.contains(pkg)) disabled.add(pkg);
                         continue;
@@ -714,6 +747,22 @@ final class HomeMode {
         String component = lines[lines.length - 1].trim();
         // With no default home yet, the system's chooser answers ("android/...ResolverActivity"): unknown.
         return component.contains("/") && !component.startsWith("android/") ? packageOf(component) : "";
+    }
+
+    /** Whether the Home button goes through JmLauncher (see JM_HOME). */
+    private static boolean hasJm(Adb adb) throws IOException {
+        return adb.shell("pm path " + JM_LAUNCHER).contains("package:");
+    }
+
+    private static String jmHome(Adb adb) throws IOException {
+        return adb.shell("getprop " + JM_HOME).trim();
+    }
+
+    /** Sets JM_HOME ("" empties it); whether it took. */
+    private static boolean setJmHome(Adb adb, String pkg) throws IOException {
+        if (!pkg.matches("[\\w.]*")) pkg = "";
+        adb.shell("setprop " + JM_HOME + " '" + pkg + "'");
+        return pkg.equals(jmHome(adb));
     }
 
     /** Whether Google TV's setup app is one of the home screens (its RecoveryActivity), so it must go off too. */
