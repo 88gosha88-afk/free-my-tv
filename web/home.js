@@ -257,12 +257,27 @@
 
   var apps = [], shelf = [], others = [], inputs = [];
 
+  /** shelf_apps in config.properties: the shelf in that order, by id or name (part of it). */
+  var WANTED = (CONFIG.shelfApps || []).map(function (s) { return s.toLowerCase(); });
+
   function pickShelf() {
+    if (WANTED.length && Prefs.shelfConfig() !== WANTED.join(',')) {
+      Prefs.set('shelf', null);
+      Prefs.set('shelfConfig', WANTED.join(','));
+    }
     var chosen = Prefs.shelf(), out = [];
     if (chosen) {
       for (var i = 0; i < chosen.length; i++) {
         for (var j = 0; j < apps.length; j++) if (apps[j].id === chosen[i]) out.push(apps[j]);
       }
+    } else if (WANTED.length) {
+      for (var w = 0; w < WANTED.length; w++) {
+        for (var k = 0; k < apps.length; k++) {
+          var id = apps[k].id.toLowerCase(), title = apps[k].title.toLowerCase();
+          if ((id.indexOf(WANTED[w]) >= 0 || title.indexOf(WANTED[w]) >= 0) && out.indexOf(apps[k]) < 0) { out.push(apps[k]); break; }
+        }
+      }
+      if (!out.length) out = apps.slice(0, FEW_APPS);
     } else {
       for (var s = 0; s < SHELF.length && out.length < FEW_APPS; s++) {
         for (var a = 0; a < apps.length; a++) {
