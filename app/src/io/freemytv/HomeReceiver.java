@@ -17,8 +17,11 @@ public class HomeReceiver extends BroadcastReceiver {
             long setAt = intent.getLongExtra("setAt", 0);
             PendingResult result = goAsync();   // ADB is network: off the main thread
             new Thread(() -> {
-                SleepTimer.fire(context, setAt);
-                result.finish();
+                try {
+                    SleepTimer.fire(context, setAt);
+                } finally {
+                    result.finish();
+                }
             }).start();
         }
     }

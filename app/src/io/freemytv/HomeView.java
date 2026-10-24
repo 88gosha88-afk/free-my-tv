@@ -434,6 +434,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         if (!again) reload();
         updatePalette();
         updatePicks();
+        updateSleep();      // a timer just set in Settings shows at once, not at the next tick
         if (sheetOpen) closeSheet();
         sheet.snap(sheet.target);
         motionDirty = true;
@@ -580,6 +581,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         clockMinute = -1;
         updateClock();
         Symbols.warm(getContext(), "bell", 26 * k);
+        Symbols.warm(getContext(), "bedtime", 21 * k);   // the sleep timer's "Off in", at lQuote's size
         layoutShelf();
         layoutStatus();
         layoutDrawer();

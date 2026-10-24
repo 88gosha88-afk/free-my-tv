@@ -28,6 +28,7 @@ public class SleepOverlay extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView view;
     private WindowManager.LayoutParams layout;
+    private int margin;
     private BitmapDrawable moon;
     private GradientDrawable pill;
     private long endsAt, sunrise, sunset;
@@ -135,7 +136,8 @@ public class SleepOverlay extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
-        layout.x = layout.y = Math.round(48 * k);
+        margin = Math.round(48 * k);
+        layout.y = margin;
         getSystemService(WindowManager.class).addView(view, layout);
     }
 
@@ -157,6 +159,8 @@ public class SleepOverlay extends Service {
         int gravity = GRAVITY[intent.getIntExtra("place", 0) % PLACES];
         if (layout.gravity != gravity) {
             layout.gravity = gravity;
+            // x moves it from the left or right edge, and from the middle when centered
+            layout.x = (gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.CENTER_HORIZONTAL ? 0 : margin;
             getSystemService(WindowManager.class).updateViewLayout(view, layout);
         }
         handler.removeCallbacks(tick);

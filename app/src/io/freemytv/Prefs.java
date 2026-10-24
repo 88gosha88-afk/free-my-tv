@@ -174,22 +174,20 @@ final class Prefs {
     /** When it was set, in uptimeMillis (dumpsys power's clock): a TV turned off since ended it (SleepTimer.check). */
     static long sleepFrom() { return sp().getLong("sleepFrom", 0); }
 
+    // No version++ for the sleep settings: HomeActivity would rebuild the home screen and fetch the weather again for a
+    // timer; HomeView reads what it needs on resume and every 15 s (updateSleep).
     static void setSleepAt(long at, long from) {
         sp().edit().putLong("sleepAt", at).putLong("sleepFrom", from).apply();
-        version++;
     }
 
     /** The sleep timer's minutes left on screen: over any app (SleepOverlay), or where this TV can't, on the home screen. */
     static boolean sleepShown() { return sp().getBoolean("sleepShown", true); }
-    static void setSleepShown(boolean on) { put("sleepShown", on); }
+    static void setSleepShown(boolean on) { sp().edit().putBoolean("sleepShown", on).apply(); }
 
     /** Where it shows over other apps: SleepOverlay's places, the top center first. */
     static int sleepPlace() { return sp().getInt("sleepPlace", 0); }
 
-    static void setSleepPlace(int place) {
-        sp().edit().putInt("sleepPlace", place).apply();
-        version++;
-    }
+    static void setSleepPlace(int place) { sp().edit().putInt("sleepPlace", place).apply(); }
 
     // MARK: - Top buttons
 
