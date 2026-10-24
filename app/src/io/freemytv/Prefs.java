@@ -158,6 +158,12 @@ final class Prefs {
     static String forecast() { return "days".equals(sp().getString("forecast", "hours")) ? "days" : "hours"; }
     static void setForecast(String v) { put("forecast", v); }
 
+    static boolean nowPlaying() { return sp().getBoolean("nowPlaying", false); }
+    static void setNowPlaying(boolean on) {   // committed: the main process reads it right away to allow the listener
+        sp().edit().putBoolean("nowPlaying", on).commit();
+        version++;
+    }
+
     static boolean quotes() { return sp().getBoolean("quotes", Config.SHOW_CRYPTO); }
     static void setQuotes(boolean on) { put("quotes", on); }
 
