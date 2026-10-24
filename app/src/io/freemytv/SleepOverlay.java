@@ -74,7 +74,7 @@ public class SleepOverlay extends Service {
     private static void allow(Context c) {
         if (!allowing.compareAndSet(false, true)) return;   // one at a time, however fast the timer is stepped
         new Thread(() -> {
-            try (Adb adb = Adb.connect(c, 0, null)) {
+            try (Adb adb = Adb.connect(c, 10_000, null)) {
                 adb.shell("appops set " + HomeMode.PKG + " SYSTEM_ALERT_WINDOW allow");
             } catch (java.io.IOException e) {
                 AppLog.w("over other apps: " + e.getMessage());   // ADB didn't answer: tried again next time, not refused

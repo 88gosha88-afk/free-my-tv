@@ -84,12 +84,13 @@ final class SleepTimer {
      * there (a Force stop takes it away), in :home.
      */
     static void check(Context c) {
-        if (minutesLeft(c) == 0) return;
-        long from = Prefs.sleepFrom();
+        if (minutesLeft(c) == 0 || !Capabilities.adb(c)) return;   // the timer needs Free My TV mode: its key is known
+        long from = Prefs.sleepFrom();   // 0: set by a build that didn't keep it
         Context app = c.getApplicationContext();
         new Thread(() -> {
-            try (Adb adb = Adb.connect(app, 0, null)) {
-                if (sleptSince(adb, from) || !adb.shell("dumpsys alarm").contains(ACTION)) {
+            try (Adb adb = Adb.connect(app, 10_000, null)) {
+                boolean ended = from > 0 && sleptSince(adb, from) || alarmGone(adb.shell("dumpsys alarm"));
+                if (ended && Prefs.sleepFrom() == from) {   // not a new timer set meanwhile
                     AppLog.w("Sleep timer: the TV was turned off since, or the alarm is gone: timer ended");
                     stop(app);
                 }
@@ -97,6 +98,12 @@ final class SleepTimer {
                 AppLog.w("Sleep timer: " + e.getMessage());
             }
         }).start();
+    }
+
+    /** Whether `dumpsys alarm` lists no timer among the pending alarms (its history keeps the ones that went off). */
+    private static boolean alarmGone(String dump) {
+        int from = dump.indexOf("Pending alarm batches"), to = dump.indexOf("Pending alarms per uid", from);
+        return from >= 0 && to > from && !dump.substring(from, to).contains(ACTION);
     }
 
     /** Whether the TV was turned off after `from` (uptimeMillis). Leaving the screensaver isn't waking up. */
@@ -133,7 +140,7 @@ final class SleepTimer {
     /** The alarm went off (main process): sleep, unless the TV is off, or was turned off since (and on again). */
     static void fire(Context c, long setAt) {
         if (!c.getSystemService(PowerManager.class).isInteractive()) return;
-        try (Adb adb = Adb.connect(c, 0, null)) {
+        try (Adb adb = Adb.connect(c, 10_000, null)) {
             if (sleptSince(adb, setAt)) {
                 AppLog.w("Sleep timer: the TV was turned off since, left on");
                 return;
