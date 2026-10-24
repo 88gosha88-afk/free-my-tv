@@ -165,7 +165,15 @@ final class HomeData {
             fetchingWeather = true;
             io.execute(() -> {
                 try {
-                    String body = get(weatherUrl());
+                    String body;
+                    try {
+                        body = get(weatherUrl(), "FreeMyTV");
+                    } catch (Exception first) {
+                        // Open-Meteo is blocked on some networks: MET Norway has the same, with no key.
+                        AppLog.w("weather: " + first.getMessage() + "; trying MET Norway");
+                        double lat = Double.parseDouble(Prefs.latitude().trim()), lon = Double.parseDouble(Prefs.longitude().trim());
+                        body = WeatherMet.toOpenMeteo(get(WeatherMet.url(lat, lon), WeatherMet.UA), lat, lon);
+                    }
                     weather = parseWeather(body);
                     weatherAt = System.currentTimeMillis();
                     cache.edit().putString("weather", body).putLong("weatherAt", weatherAt).putString("weatherPlace", weatherPlace()).apply();
@@ -267,10 +275,14 @@ final class HomeData {
     }
 
     private static String get(String url) throws IOException {
+        return get(url, "FreeMyTV");
+    }
+
+    private static String get(String url, String userAgent) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(6000);
         c.setReadTimeout(6000);
-        c.setRequestProperty("User-Agent", "FreeMyTV");
+        c.setRequestProperty("User-Agent", userAgent);
         try {
             if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
             try (InputStream in = c.getInputStream()) {
