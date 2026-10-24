@@ -265,6 +265,10 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     }
 
     /** Switches what the screensaver shows (before start, or, when a video can't play, to the clock). */
+    int getMode() {
+        return mode;
+    }
+
     void setMode(int m) {
         if (mode == m) return;
         mode = m;

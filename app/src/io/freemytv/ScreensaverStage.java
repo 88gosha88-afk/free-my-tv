@@ -115,7 +115,7 @@ final class ScreensaverStage extends FrameLayout {
             return;
         }
         playing = next;
-        dream.setCaption(next.clip.place);
+        if (dream.getMode() != DreamView.VIDEO) dream.setCaption(next.clip.place);   // else it changes with the picture
         try {
             MediaPlayer mp = new MediaPlayer();
             player = mp;
@@ -128,6 +128,7 @@ final class ScreensaverStage extends FrameLayout {
                 if (p == player && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
                     handler.removeCallbacks(stalled);
                     errors = 0;
+                    dream.setCaption(next.clip.place);
                     dream.setMode(DreamView.VIDEO);
                     texture.animate().alpha(1f).setDuration(FADE_MS).start();
                 }
@@ -135,8 +136,7 @@ final class ScreensaverStage extends FrameLayout {
             });
             mp.setOnCompletionListener(p -> {
                 if (p != player) return;
-                texture.animate().cancel();
-                texture.setAlpha(0f);
+                // The last frame stays on the screen (no blue gap) until the next clip shows its first one.
                 playNext();
             });
             mp.setOnErrorListener((p, what, extra) -> {
