@@ -685,7 +685,6 @@
   }
 
   function closeSheets() {
-    if (st.zone === Z.SETTINGS) Data.refresh();   // the photo of the day, if its theme was just picked
     setClass($('apps'), 'open', false);
     setClass($('settings'), 'open', false);
     setClass($('shelfedit'), 'open', false);
@@ -706,15 +705,8 @@
         step: function (d) { if (d >= 0) openLanguages(); }},
       {label: tr('Temperature'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : tr('unit|Automatic'),
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
-      {label: tr('Theme'), value: theme === 'light' ? tr('Light') : theme === 'dark' ? tr('Dark')
-          : theme === 'photo' && !Data.hasKey() ? tr('Photo of the day') : auto,
-        step: function (d) {
-          // The photo of the day shows only without picks (with them, the first pick's photo is the background).
-          // Bing is asked when Settings closes, not while arrowing past the theme.
-          cycle('theme', Data.hasKey() ? ['auto', 'light', 'dark'] : ['auto', 'light', 'dark', 'photo'], theme, d);
-          renderPhoto();
-          checkNight();
-        }},
+      {label: tr('Theme'), value: theme === 'light' ? tr('Light') : theme === 'dark' ? tr('Dark') : auto,
+        step: function (d) { cycle('theme', ['auto', 'light', 'dark'], theme, d); checkNight(); }},
       {label: tr('Watch from the screensaver'), toggle: Prefs.saverWatch(),
         step: function () { Prefs.set('saverWatch', !Prefs.saverWatch()); }},
       {label: tr('Weather widget'), toggle: Prefs.weather(),
@@ -1092,52 +1084,13 @@
     toastTimer = setTimeout(function () { setClass(t, 'on', false); }, 6000);
   }
 
-  // MARK: - Photo of the day
-
-  var photoUrl = null, photoShown = false;
-
-  /**
-   * The photo of the day behind the clock (its theme, without picks), shown once loaded, with its caption. Off, the
-   * image goes too (the browser can free it: a lot on a 1 GB TV).
-   */
-  function renderPhoto() {
-    var w = Data.wallpaper(), url = w ? w.url : '';
-    if (url === photoUrl) return;
-    photoUrl = url;
-    var p = $('photo');
-    if (!url) {
-      photoShown = false;
-      setClass(body, 'photo', false);
-      $('caption').textContent = '';
-      setClass(p, 'on', false);
-      p.style.backgroundImage = '';
-      checkNight();
-      return;
-    }
-    // The dark look and the caption only once the photo is there: with Bing unreachable (offline at start), not over black.
-    var img = new Image();
-    img.onload = function () {
-      if (photoUrl !== url) return;
-      p.style.backgroundImage = 'url("' + url + '")';   // Data.wallpaper() allows no quotes in it
-      setClass(p, 'on', true);
-      photoShown = true;
-      setClass(body, 'photo', true);
-      $('caption').textContent = w.caption;
-      checkNight();
-    };
-    img.onerror = function () { if (photoUrl === url) photoUrl = null; };   // tried again at the next render
-    img.src = url;
-  }
-
   // MARK: - Night, clock, screensaver
 
   var lastNight = null;
 
   function checkNight() {
-    // On the photo of the day, the dark look at any hour (white text reads on a photo), and the photo dims at night.
-    var photo = photoShown, dim = Data.isNight(Date.now()), night = dim || photo;
+    var night = Data.isNight(Date.now());
     setClass(body, 'night', night);
-    setClass(body, 'dim', dim && photo);
     if (night === lastNight) return;
     lastNight = night;
     document.documentElement.style.background = night ? '#0B0B0D' : '';
@@ -1238,7 +1191,6 @@
     renderShelf();
     renderDrawer();
     renderClock();
-    renderPhoto();
     checkNight();
     if (st.zone === Z.SETTINGS) renderSettings();
     updateFocus();
@@ -1278,7 +1230,6 @@
     renderQuotes();
     renderCards();
     renderPanels();
-    renderPhoto();
     checkNight();
   });
 
