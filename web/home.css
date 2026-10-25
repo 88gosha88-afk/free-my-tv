@@ -68,6 +68,28 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .drawer-open #sky .lift { opacity: 0.32; }
 .night.drawer-open #sky .lift { opacity: 0.42; }
 
+/* The photo of the day (its theme, without picks): sharp, shaded at the left (the clock), the bottom (the shelf) and
+   the top (the buttons and the caption), like HomeView's scrims; 45% darker at night (Backdrop.NIGHT_DIM). */
+#photo {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  background-size: cover; background-position: center;
+  opacity: 0; -webkit-transition: opacity 0.8s; transition: opacity 0.8s;
+}
+#photo.on { opacity: 1; }
+#photo .shade {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  -webkit-transition: background-color 2s; transition: background-color 2s;
+  background:
+    -webkit-linear-gradient(top, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.1) 12%, rgba(0, 0, 0, 0) 24%),
+    -webkit-linear-gradient(bottom, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.3) 15%, rgba(0, 0, 0, 0.18) 33%, rgba(0, 0, 0, 0.05) 48%, rgba(0, 0, 0, 0) 60%),
+    -webkit-linear-gradient(left, rgba(0, 0, 0, 0.66), rgba(0, 0, 0, 0.52) 17%, rgba(0, 0, 0, 0.26) 37%, rgba(0, 0, 0, 0.07) 54%, rgba(0, 0, 0, 0) 68%);
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.34), rgba(0, 0, 0, 0.1) 12%, rgba(0, 0, 0, 0) 24%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.3) 15%, rgba(0, 0, 0, 0.18) 33%, rgba(0, 0, 0, 0.05) 48%, rgba(0, 0, 0, 0) 60%),
+    linear-gradient(to right, rgba(0, 0, 0, 0.66), rgba(0, 0, 0, 0.52) 17%, rgba(0, 0, 0, 0.26) 37%, rgba(0, 0, 0, 0.07) 54%, rgba(0, 0, 0, 0) 68%);
+}
+.dim #photo .shade { background-color: rgba(0, 0, 0, 0.45); }
+
 /* MARK: - Moving parts: the top fades and everything rises when the drawer opens. */
 
 /* Each part is its own stack, so a focused tile (z-index) never shows over the drawer, a sheet or the screensaver. */
@@ -281,6 +303,18 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 #clock .date { display: block; font-size: 40px; font-weight: 500; letter-spacing: 0; margin-top: 18px; color: #6E6E73; }
 .no-picks #clock { display: block; }
+
+/* The photo of the day's caption (what it shows and whose it is): on the buttons' line, ending before them, as on
+   Android (there it starts at the left; here the title holds the left), on a dark chip: at least 4.6:1 even over a
+   white sky (measured on 15 of Bing's photos). */
+#caption {
+  position: absolute; right: 400px; top: 83px; max-width: 980px; height: 40px; line-height: 40px; padding: 0 16px;
+  border-radius: 20px; background: rgba(0, 0, 0, 0.5);
+  font-size: 22px; font-weight: 500; color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: none;
+}
+.photo.no-picks #caption { display: block; }
 .night #clock { color: #F5F5F7; }
 .night #clock .date { color: rgba(245, 245, 247, 0.62); }
 

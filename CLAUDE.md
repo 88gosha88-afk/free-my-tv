@@ -220,6 +220,10 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   are. Run `python3 tools/translate.py --check` to validate all catalogues without writing files.
   No right-to-left languages yet (the layout isn't mirrored); CJK and Devanagari use the system font.
   Comments in English, short, only where the why isn't obvious.
+- The *Photo of the day* theme (`Wallpaper`; `web/data.js` on LG and Samsung): Bing's photo of the day behind the
+  clock, only without picks and while their own photos are off (`Photos.on()`: then no Bing request). Only Bing's
+  own image path on www.bing.com, no redirects, at most 5 MB of JPEG, and days with `wp: false` skipped. Drawn by
+  `HomeView.photoBg`, dimmed at night by `Backdrop.NIGHT_DIM`, let go when the theme changes.
 - Settings come from `config.properties` through the generated `out/gen/io/freemytv/Config.java` (never edit that).
   Built with `--generic`, the place values are empty and `Place` fills them from the TV's time zone
   (`app/assets/zones.json`, written by `tools/make_zones.py` with `web/zones.js`).
