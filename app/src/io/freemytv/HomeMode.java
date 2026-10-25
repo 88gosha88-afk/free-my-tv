@@ -692,6 +692,15 @@ final class HomeMode {
                         fixed.add(pkg);
                     }
                 }
+                // The switch's own rule, at every check: the TV's home screen stays on while Google TV's setup app is
+                // on. With the home off, the setup app's recovery screen takes Home, and a TV that turns the setup app
+                // back on at every start may not start at all (#269). Versions before 1.2 could leave it that way.
+                if (setupOn && homePkg != null && !homePkg.equals(PKG) && disabledNow.contains(homePkg)
+                        && adb.shell("pm enable " + homePkg).contains("new state: enabled")) {
+                    disabled.remove(homePkg);
+                    disabledNow.remove(homePkg);
+                    AppLog.w("turned the TV's home screen back on: Google TV's setup app is on");
+                }
                 if (!reverted && !homeHolder(adb).contains(PKG)) {
                     adb.shell("cmd package set-home-activity " + HOME_ACTIVITY);
                     fixed.add(Ui.tr("the home screen"));
