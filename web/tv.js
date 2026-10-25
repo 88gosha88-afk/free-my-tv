@@ -11,6 +11,9 @@ var TV = (function () {
   var webos = typeof window.PalmServiceBridge !== 'undefined';
   var samsung = !webos && typeof window.tizen !== 'undefined' && !!window.tizen.application;
   var calls = [];   // a bridge is collected if nothing holds it before its reply arrives
+  var tizen2 = samsung && /Tizen 2\./.test(navigator.userAgent);
+  // Tizen 2 (2016 TVs, WebKit 538) repaints every shadow on every frame of a focus animation: home.css turns them off.
+  if (tizen2) document.documentElement.className += ' lite';
 
   /** One Luna call; done(result) with null on failure. */
   function luna(uri, params, done) {
@@ -319,6 +322,12 @@ var TV = (function () {
 
   return {
     name: webos ? 'webos' : samsung ? 'tizen' : 'browser',
+
+    /**
+     * Whether an app can open the TV's settings. Not on Tizen 2 (a 2016 KU6300): the "settings" request and
+     * org.tizen.menu both answer success and nothing shows, and the remote API ignores MENU and HOME.
+     */
+    canOpenSettings: !tizen2,
 
     /** Installed apps, as the TV's launcher lists them: [{id, title, icon, color}]. */
     apps: function (done) {
