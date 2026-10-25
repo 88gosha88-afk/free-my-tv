@@ -163,6 +163,11 @@ var Data = (function () {
     CURRENCY = 'USD';
     QUOTE = 'USDT';
   }
+  /** A pair with no trade for a day: Binance halted it and keeps answering with the frozen last price (AUD since 2026-10-06). */
+  function halted(list) {
+    for (var i = 0; list && i < list.length; i++) if (list[i].closeTime > 0 && Date.now() - list[i].closeTime > 864e5) return true;
+    return false;
+  }
   if (stored('dollarsFor') === CURRENCY && CURRENCY !== 'USD') {
     CURRENCY = 'USD';
     QUOTE = 'USDT';
@@ -209,6 +214,8 @@ var Data = (function () {
         // A pair Binance doesn't list (HTTP 400): the prices go in dollars. Binance.US has only dollar pairs: its 400
         // counts only where Binance.com refuses the US (HTTP 451), not after a timeout or a 5xx there.
         if (err && err.message === 'HTTP 400' && QUOTE !== 'USDT' && (h === 0 || refused)) { fetchingPrices = false; inDollars(); refreshPrices(); return; }
+        // Halted: dollars for this run, not saved like the 400's (the market may open again).
+        if (!err && QUOTE !== 'USDT' && halted(body)) { fetchingPrices = false; CURRENCY = 'USD'; QUOTE = 'USDT'; refreshPrices(); return; }
         if (err || !parsePrices(body)) {
           if (h + 1 < hosts.length && !(err && err.message === 'HTTP 400')) next(h + 1, err && err.message === 'HTTP 451');
           else fetchingPrices = false;
