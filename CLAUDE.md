@@ -248,6 +248,11 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   PatchWall (`com.mitv.tvhome.atv`), never the home activity, so without the service there is no way back to Free My
   TV, and PatchWall's All Apps opens the disabled `tvlauncher`. `Prefs.KEY_MI` opens our home screen by default
   ("Xiaomi default", empty, leaves it to PatchWall). Leave PatchWall on: it also shows the TV's input picker.
+  Xiaomi TVs with a Home button (MiTV-MOOR0, MediaTek, Android TV 11 tested) send `KEYCODE_BUTTON_3` for YouTube, a
+  global key for the stock home screen (`launcherx`) that Free My TV turns off, and `KEYCODE_BUTTON_5` for PatchWall,
+  a global key for the same `partnercustomizer` receiver: both are ours (`Prefs.KEY_XIAOMI_PATCHWALL` is left to the
+  TV until an app is picked). Netflix (`BUTTON_6`) stays with the system. Their remote sends one press as a burst of 5
+  to 8: `RemoteKeys` opens the app once (Xiaomi only).
   Xiaomi TVs sold in Russia (MiTV-MOOQ1, MediaTek, Android TV 11 tested) send `KEYCODE_BUTTON_13` for Okko, `_1` for
   VK, `_16` for Rutube, `_11` for KION, `_10` for Wink and `_12` for IVI, global keys for Xiaomi's hot-key receiver
   (`com.xiaomi.android.tvsetup.partnercustomizer`, its log: "dealWithHotkey keycode:199"). "Xiaomi default" (empty)
