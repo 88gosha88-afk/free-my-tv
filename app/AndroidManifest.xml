@@ -53,6 +53,7 @@
         <package android:name="com.google.android.tv" />
         <package android:name="com.mediatek.wwtv.tvcenter" />
         <package android:name="com.sony.dtv.tvx" />
+        <package android:name="com.smartdevice.livetv" />
         <package android:name="com.mediatek.tv.oneworld.tvcenter" />
         <!-- HY300 projectors: keystone and Miracast (drawer shortcuts), Allwinner's player for HDMI; MIUI TV's source player -->
         <package android:name="com.htc.htcsettings" />
@@ -60,6 +61,7 @@
         <package android:name="com.softwinner.awlivetv" />
         <package android:name="com.xiaomi.mitv.tvplayer" />
         <package android:name="com.amazon.tv.livetv" />
+        <package android:name="com.amazon.tv.inputpreference.service" />
         <package android:name="com.amazon.mediatek.livetv" />
         <intent>
             <action android:name="android.intent.action.MAIN" />
