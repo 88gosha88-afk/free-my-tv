@@ -177,7 +177,9 @@ def main():
         print('Removed.')
         return
 
-    remote = caps.get('sdk_toolpath', '/home/owner/share/tmp/sdk_tools').rstrip('/') + '/FreeMyTV-tizen.wgt'
+    # Tizen 2.4's sdbd names no sdk_toolpath and has no /home/owner: its tools' folder is /opt/usr/apps/tmp.
+    default_path = '/opt/usr/apps/tmp' if caps.get('platform_version', '').startswith('2.') else '/home/owner/share/tmp/sdk_tools'
+    remote = caps.get('sdk_toolpath', default_path).rstrip('/') + '/FreeMyTV-tizen.wgt'
     with open(WGT, 'rb') as f:
         data = f.read()
     print('Copying the app to the TV ...')
