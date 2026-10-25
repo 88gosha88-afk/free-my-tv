@@ -539,6 +539,7 @@ final class HomeApps {
                 intent = liveTv(a);
                 break;
             case INPUT:
+                if (HomeMode.AMAZON && fireInput(a, it)) return true;
                 intent = inputIntent(a, it);
                 break;
             case SETTINGS:
@@ -573,11 +574,39 @@ final class HomeApps {
     }
 
     /**
+     * Fire TV (a TV with Fire OS built in): an HDMI input through Amazon's own input switch, as its home screen does.
+     * The standard request goes to Vewd's HbbTV player or to Amazon's Live TV, which both play the antenna's last
+     * channel (an app's, like RaiPlay's) instead, and Amazon's input player wants a permission only Amazon's apps have.
+     * The switch takes the port's hardware number: HW2 is HDMI 1. Tested on a Xiaomi Fire TV (MediaTek, Fire OS 8).
+     */
+    private static boolean fireInput(Context c, Item it) {
+        Matcher m = Pattern.compile("/HW(\\d+)$").matcher(it.inputId);
+        if (!m.find()) return false;
+        Intent sw = new Intent().setComponent(new ComponentName("com.amazon.tv.inputpreference.service",
+                "com.amazon.tv.inputpreference.service.KaminoInputSwitchService"));
+        if (c.getPackageManager().resolveService(sw, 0) == null) return false;
+        try {
+            return c.startService(sw.putExtra("inputType", Integer.parseInt(m.group(1)))) != null;
+        } catch (RuntimeException e) {
+            AppLog.w("Amazon's input switch: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Live TV: tune the antenna input directly. MediaTek TV Center otherwise restores the last source used, which can
      * be HDMI, so its explicit activity receives the tuner URI. Other TV apps keep the standard channel-list request.
      */
     static Intent liveTv(Context c) {
         PackageManager pm = c.getPackageManager();
+        // Fire TV: the antenna (digital terrestrial) entry of Amazon's Live TV, which plays the antenna's channels or
+        // opens the channel scan when there are none yet. The channels request would also offer Vewd's HbbTV player,
+        // and Live TV on its own plays the last channel, which can be an app's (RaiPlay's).
+        if (HomeMode.AMAZON) {
+            Intent antenna = new Intent().setComponent(new ComponentName("com.amazon.tv.livetv",
+                    "com.amazon.tv.livetv.DttIconWrapperActivity"));
+            if (antenna.resolveActivity(pm) != null) return antenna;
+        }
         // MediaTek OneWorld TV Center (KTC/NextStar) has one input per tuner mode (antenna, cable, satellite): tuning one
         // switches the TV to that mode and hides the other channel lists, so it opens as it is, on its own last channel.
         Intent oneWorld = launchIntent(pm, "com.mediatek.tv.oneworld.tvcenter");

@@ -279,6 +279,14 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
 - MediaTek TVs that list one hardware tuner input per mode (Haier H32S80EFX, Google TV 14: `AnalogInputService/HW1`,
   `CableInputService/HW0`, `TunerInputService/HW0`, in no fixed order): Live TV tunes the digital antenna's
   (`HomeApps.tunerRank`), then cable's, then analog's.
+- TVs with Fire OS built in (Xiaomi Fire TV, MediaTek, Fire OS 8 tested): the passthrough request lands on Vewd's
+  HbbTV player (`com.vewd.core.tvapp`) or on Amazon's Live TV, and both play the antenna's last channel (RaiPlay's)
+  instead of the port. Amazon's input player wants `com.amazon.tv.permission.TUNE_INPUT` and its home screen's switch
+  `LAUNCH_INPUTS` (signature only), but `com.amazon.tv.inputpreference.service/.KaminoInputSwitchService` takes an
+  `inputType` extra, the port's hardware number (`.../HdmiInputService/HW2` is 2, HDMI 1), from any app
+  (`HomeApps.fireInput`). Live TV opens `com.amazon.tv.livetv/.DttIconWrapperActivity`, the antenna's entry.
+  A Fire OS TV restarts quietly into standby when turned off (QHB) once it booted from power; after a reboot from
+  software (`adb reboot`) every power-off restarts it with the screen on, until it's unplugged for 30 seconds.
 - After any change, `./build.sh` must end with `Built FreeMyTV.apk`.
 - LG and Samsung (`web/`): plain ES5 JavaScript and CSS without variables, grid or backdrop-filter, since older TVs
   (webOS 3 and 4, Tizen 3) run a Chromium from 2015 to 2017; only transform and opacity animate. `web/tv.js` is the
