@@ -262,7 +262,8 @@ reference (fix them by hand); the others were machine-made, and corrections from
 - **Add a language:** `python3 tools/translate.py --new ca`, then fill `app/assets/i18n/ca.json` by hand, or with
   `ANTHROPIC_API_KEY` set, `python3 tools/translate.py --fill --lang ca` (only the strings go to the API).
 - **After changing text in the code:** `python3 tools/translate.py` lists what each language lacks; `--fill` translates
-  only that, `--prune` drops strings the code no longer uses.
+  only that (the hand-translated ones, Portuguese, Spanish, German, Russian, Thai and Turkish, are left for a person
+  unless `--lang` names them), `--prune` drops strings the code no longer uses.
   Run `python3 tools/translate.py --check` to validate all catalogues without writing files.
 - Text built at runtime has placeholders (`"{n} min ago"`), so each language puts the words in its own order. A key
   like `"unit|Automatic"` is the same English in another place, where a language may need another word.

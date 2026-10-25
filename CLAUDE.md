@@ -242,7 +242,7 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   (`"unit|Automatic"`, `"format|h:mm"` holds a SimpleDateFormat pattern). A count with a word is
   `Ui.plural("plural|one:{n} season|other:{n} seasons", n)`: each catalogue gives one form per CLDR plural category of
   its language (`one`/`few`/`many`/`other` in Russian, Ukrainian, Polish; only `other` in Japanese, Chinese…), and
-  ICU's rules pick one. Portuguese, Spanish, German and Russian are hand translations: the reference, edited by hand,
+  ICU's rules pick one. Portuguese, Spanish, German, Russian, Thai and Turkish are hand translations: the reference, edited by hand,
   never replaced with machine ones (`--fill` leaves them alone unless `--lang` names one). Dates and numbers use
   `Ui.locale()`. Text
   drawn every frame is cached and made again when `Ui.generation` changes. After changing text, run
