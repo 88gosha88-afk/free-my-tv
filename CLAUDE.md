@@ -88,8 +88,8 @@ stays, and Free My TV opens with a long press of a number key.
 
 ## Installing it on a Samsung TV (Tizen)
 
-On Samsung it's an app too (2017 and newer, Tizen 3+), installed through Samsung's Developer Mode; Samsung's home
-screen stays. Two ways:
+On Samsung it's an app too (2016 and newer, Tizen 2.4+; TizenBrew needs 2017 and newer), installed through Samsung's
+Developer Mode; Samsung's home screen stays. Two ways:
 
 - **The release, no tools:** TizenBrew Installer (github.com/reisxd/TizenBrewInstaller) installs the latest GitHub
   release when they type `simbasjungles/free-my-tv`, and on 2023+ TVs signs it with their Samsung account. That build
@@ -110,21 +110,23 @@ screen stays. Two ways:
    JDK 17's .jdk folder>` (Homebrew: `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk`). That `tizen` signs natively.
 4. **Certificate, once:** 2023+ TVs (Tizen 7+) need a Samsung certificate, made with their Samsung account for this TV
    (its DUID): the plugin's Samsung profile opens the browser for them to sign in, or Tizen Studio's Certificate
-   Manager does it. 2017-2022 TVs take a Tizen certificate (`tizen certificate`, then `tizen security-profiles add`
+   Manager does it. 2016-2022 TVs take a Tizen certificate (`tizen certificate`, then `tizen security-profiles add`
    and `tizen cli-config "profiles.path=<home>/tizen-studio-data/profile/profiles.xml"`; on macOS the passwords go to
    the login Keychain). Certificate passwords are theirs: they type them in their own terminal, never in the chat.
 5. **Settings:** the same `config.properties`; the TMDB key rules above apply.
 6. **Build and sign:** `python3 tizen/build.py --sign <profile>` must end with `Built FreeMyTV-tizen.wgt (...,
    signed with "<profile>")`.
 7. **Install:** `python3 tizen/install.py <IP>`: it pushes the app over SDB (port 26101), installs it with the TV's
-   `0 vd_appinstall` and opens it with `0 was_execute` (tested on 2017 Tizen 3.0 and 2019 Tizen 5.0 TVs); it only
-   reports success when the TV says `install completed` (`cmd_ret:0` comes after failures too). `--uninstall` removes
+   `0 vd_appinstall` and opens it with `0 was_execute` (tested on 2016 Tizen 2.4, 2017 Tizen 3.0 and 2019 Tizen 5.0
+   TVs; Tizen 2.4 has no `sdk_toolpath`, so it pushes to `/opt/usr/apps/tmp`); it only reports success when the TV
+   says `install completed` (`cmd_ret:0` comes after failures too). `--uninstall` removes
    it; some TVs' sdbd doesn't answer that, and then it's removed on the TV (Apps, Settings, Free My TV, Delete).
    With Samsung's tools instead: `sdb connect <IP>`, `tizen install -n FreeMyTV-tizen.wgt -t <serial from sdb
    devices>` and `tizen run -p FreeMyTVio.FreeMyTV -t <serial>`. Updates need the same certificate: the TV refuses
    one signed by another (uninstall first). A retail TV's sdbd only takes files (`filesync_support:push`): nothing
    can be pulled from it. To look inside the running app, `0 debug FreeMyTVio.FreeMyTV 300` over SDB opens it with
-   a Web Inspector port (Runtime.evaluate works on Tizen 3; screenshots don't).
+   a Web Inspector port (Runtime.evaluate works on Tizen 3; screenshots don't; Tizen 2.4 doesn't answer it, nor
+   `0 vd_applist`).
 8. **Tell them:** *Autorun Last App* in the TV's settings (under Start Screen Options; where it is changes by year)
    makes the TV turn on into Free My TV.
 
@@ -281,8 +283,10 @@ entries; its system pieces are in `PROTECTED`. USB debugging opens ADB on 5555 t
   (`HomeApps.tunerRank`), then cable's, then analog's.
 - After any change, `./build.sh` must end with `Built FreeMyTV.apk`.
 - LG and Samsung (`web/`): plain ES5 JavaScript and CSS without variables, grid or backdrop-filter, since older TVs
-  (webOS 3 and 4, Tizen 3) run a Chromium from 2015 to 2017; only transform and opacity animate. `web/tv.js` is the
-  TV's side: on LG, Luna (`listLaunchPoints`, `launch`, the inputs; where webOS 6 and newer deny `listLaunchPoints`
+  (webOS 3 and 4, Tizen 3) run a Chromium from 2015 to 2017; only transform and opacity animate. Tizen 2.4 (2016) runs
+  WebKit 538: no Intl (`fmt` in data.js rounds by hand), SVGs need a width and height, and `tv.js` adds a `lite` class
+  there that turns off shadows and transitions, which its GPU can't keep up with; it also can't open the TV's settings
+  (`TV.canOpenSettings`). `web/tv.js` is the TV's side: on LG, Luna (`listLaunchPoints`, `launch`, the inputs; where webOS 6 and newer deny `listLaunchPoints`
   to Developer Mode apps, the list comes from the TV's remote control API on `ws://127.0.0.1:3000` once the TV has
   allowed it (it asks once; a "no" isn't asked again), and until then from `getAppLoadStatus` over a list of known
   app ids, which shows the logo bundled in `web/icons/` where there is one, otherwise the name on the brand's color);
