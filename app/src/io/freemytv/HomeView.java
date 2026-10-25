@@ -566,6 +566,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     @Override public void onWallpaper() {
         if (photoTheme()) wallpaper.refreshIfStale();
         else wallpaper.release();
+        photoShown = photoTheme() ? wallpaper.backdrop() : null;
         if (bgTo == null && bgFadeAt == 0) neutralGlass();
         heroDirty = statusDirty = tilesDirty = drawerDirty = true;
         invalidateAll();
@@ -576,9 +577,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         return Prefs.theme().equals("photo") && !picksOn() && !Photos.on(getContext());
     }
 
-    /** The photo of the day behind the clock, once downloaded; null otherwise. */
+    /**
+     * The photo of the day behind the clock, once downloaded; null otherwise. Kept by onWallpaper (on resume, when the
+     * photo arrives, when your photos change): dark() asks for it inside every tone(), many times a frame.
+     */
+    private Backdrop photoShown;
+
     private Backdrop photoBg() {
-        return photoTheme() ? wallpaper.backdrop() : null;
+        return photoShown;
     }
 
     @Override public void onRecs() {

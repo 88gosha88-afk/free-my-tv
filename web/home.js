@@ -1094,7 +1094,7 @@
 
   // MARK: - Photo of the day
 
-  var photoUrl = null;
+  var photoUrl = null, photoShown = false;
 
   /**
    * The photo of the day behind the clock (its theme, without picks), shown once loaded, with its caption. Off, the
@@ -1102,18 +1102,30 @@
    */
   function renderPhoto() {
     var w = Data.wallpaper(), url = w ? w.url : '';
-    setClass(body, 'photo', !!w);
-    $('caption').textContent = w ? w.caption : '';
     if (url === photoUrl) return;
     photoUrl = url;
     var p = $('photo');
-    if (!url) { setClass(p, 'on', false); p.style.backgroundImage = ''; return; }
+    if (!url) {
+      photoShown = false;
+      setClass(body, 'photo', false);
+      $('caption').textContent = '';
+      setClass(p, 'on', false);
+      p.style.backgroundImage = '';
+      checkNight();
+      return;
+    }
+    // The dark look and the caption only once the photo is there: with Bing unreachable (offline at start), not over black.
     var img = new Image();
     img.onload = function () {
       if (photoUrl !== url) return;
       p.style.backgroundImage = 'url("' + url + '")';   // Data.wallpaper() allows no quotes in it
       setClass(p, 'on', true);
+      photoShown = true;
+      setClass(body, 'photo', true);
+      $('caption').textContent = w.caption;
+      checkNight();
     };
+    img.onerror = function () { if (photoUrl === url) photoUrl = null; };   // tried again at the next render
     img.src = url;
   }
 
@@ -1123,7 +1135,7 @@
 
   function checkNight() {
     // On the photo of the day, the dark look at any hour (white text reads on a photo), and the photo dims at night.
-    var photo = !!Data.wallpaper(), dim = Data.isNight(Date.now()), night = dim || photo;
+    var photo = photoShown, dim = Data.isNight(Date.now()), night = dim || photo;
     setClass(body, 'night', night);
     setClass(body, 'dim', dim && photo);
     if (night === lastNight) return;

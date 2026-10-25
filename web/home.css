@@ -316,6 +316,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   display: none;
 }
 .photo.no-picks #caption { display: block; }
+.photo #quotes { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); }   /* outside the scrims, over bright skies */
 .night #clock { color: #F5F5F7; }
 .night #clock .date { color: rgba(245, 245, 247, 0.62); }
 
