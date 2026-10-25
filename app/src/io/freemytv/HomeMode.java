@@ -357,7 +357,7 @@ final class HomeMode {
             Watchdog.clear(c);
             check(adb.shell("cmd package set-home-activity " + HOME_ACTIVITY), "Success",
                     Ui.tr("Android didn't accept the new home screen"));
-            if (Config.OWN_SCREENSAVER) adb.shell("settings put secure screensaver_components " + DREAM);
+            if (Config.SCREENSAVER) adb.shell("settings put secure screensaver_components " + DREAM);
             boolean jmOurs = !jm || setJmHome(adb, PKG);
             if (!jmOurs) AppLog.w("JmLauncher keeps the Home button: " + JM_HOME + " didn't take");
             JSONObject started = state(c);
@@ -633,6 +633,13 @@ final class HomeMode {
                 }
                 for (String pkg : sorted(wanted)) if (!order.contains(pkg)) order.add(pkg);
                 Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
+                // screensaver=false after a switch with ours: the TV's own screensaver app comes back on.
+                String dreamPkg = packageOf(dream);
+                if (!Config.SCREENSAVER && dreamPkg != null && disabled.remove(dreamPkg)) {
+                    wanted.remove(dreamPkg);
+                    order.remove(dreamPkg);
+                    if (disabledNow.remove(dreamPkg)) adb.shell("pm enable " + dreamPkg);
+                }
                 // Off before Free My TV: turned off again if a TV update brings one back, but never handed to
                 // Original to turn on.
                 List<String> keptOff = stringList(s, "keptOff");
@@ -691,9 +698,11 @@ final class HomeMode {
                 }
                 // Whole component names: ".ScreensaverAlone" (Android 11 to 12L) contains ".Screensaver" (the others).
                 List<String> savers = Arrays.asList(adb.shell("settings get secure screensaver_components").trim().split(","));
-                if (Config.OWN_SCREENSAVER && !reverted && !savers.contains(DREAM)) {
+                if (Config.SCREENSAVER && !reverted && !savers.contains(DREAM)) {
                     adb.shell("settings put secure screensaver_components " + DREAM);
                     if (!savers.contains(OTHER_DREAM)) fixed.add(Ui.tr("the screensaver"));   // ours, moved: not the TV
+                } else if (!Config.SCREENSAVER && !reverted && (savers.contains(DREAM) || savers.contains(OTHER_DREAM))) {
+                    restoreScreensaver(adb, s);   // screensaver=false since the switch: the TV's own again
                 }
                 record(adb, disabled);
                 JSONObject latest = state(app);
@@ -726,7 +735,7 @@ final class HomeMode {
         if (TV_LAUNCHER.equals(homePkg)) out.add(TV_RECOMMENDATIONS);
         String dreamPkg = packageOf(dream);
         // screensaver=false keeps the TV's own screensaver: then it stays on.
-        if (Config.OWN_SCREENSAVER && dreamPkg != null && !dreamPkg.equals(PKG) && !dreamPkg.equals(homePkg)) out.add(dreamPkg);
+        if (Config.SCREENSAVER && dreamPkg != null && !dreamPkg.equals(PKG) && !dreamPkg.equals(homePkg)) out.add(dreamPkg);
         out.addAll(Arrays.asList(DEBLOAT));
         if (Config.DISABLE_ASSISTANT) out.addAll(Arrays.asList(ASSISTANT));
         return out;
@@ -826,6 +835,8 @@ final class HomeMode {
     }
 
     private static void restoreScreensaver(Adb adb, JSONObject s) throws IOException {
+        // screensaver=false: the TV kept its own, so only ours (set before that) gives way, not one picked meanwhile.
+        if (!Config.SCREENSAVER && !adb.shell("settings get secure screensaver_components").contains(PKG + "/")) return;
         String saver = safeComponents(s.optString("originalScreensaver", ""));
         if (saver.isEmpty()) adb.shell("settings delete secure screensaver_components");
         else adb.shell("settings put secure screensaver_components '" + saver + "'");

@@ -175,7 +175,7 @@ To remove it for good, switch to *Original* first, then uninstall *Free My TV* (
 
 ## What it changes
 
-- It becomes the home screen and the screensaver.
+- It becomes the home screen and, unless `screensaver=false`, the screensaver.
 - It turns off, without uninstalling:
   - the stock home screen and screensaver (the screensaver stays with `screensaver=false`);
   - Google TV's recovery home, Play Games and YouTube Music;
