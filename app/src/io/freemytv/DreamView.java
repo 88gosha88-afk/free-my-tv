@@ -689,7 +689,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         Canvas c = s.caption.beginRecording(w, h);
         try {
             if (s.pick.photo != null) return;   // your photos have no caption
-            float x = MARGIN * k, metaBase = META_BASE * k, titleBase = metaBase - 58 * k;
+            // With the hint, the caption moves up a line: the hint takes the meta's place, 72 px from the bottom edge.
+            boolean hint = Prefs.saverWatch() && s.pick.pkg != null;
+            float x = MARGIN * k, metaBase = (META_BASE - (hint ? 44 : 0)) * k, titleBase = metaBase - 58 * k;
             String title = s.pick.title == null ? "" : s.pick.title;
             StaticLayout t = StaticLayout.Builder.obtain(title, 0, title.length(), titlePaint, Math.round(TITLE_W * k))
                     .setMaxLines(2).setEllipsize(TextUtils.TruncateAt.END).setAlignment(Layout.Alignment.ALIGN_NORMAL)
@@ -702,9 +704,9 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
             t.draw(c);
             c.restore();
             if (s.pick.meta != null && !s.pick.meta.isEmpty()) c.drawText(s.pick.meta, x, metaBase, metaPaint);
-            if (Prefs.saverWatch() && s.pick.pkg != null) {
+            if (hint) {
                 c.drawText(Ui.trf("Press OK to watch on {app} · any other button to close", "app", Recs.serviceName(s.pick)),
-                        x, metaBase + 44 * k, hintPaint);
+                        x, META_BASE * k, hintPaint);
             }
         } finally {
             s.caption.endRecording();
