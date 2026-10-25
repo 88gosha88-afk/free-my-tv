@@ -47,9 +47,9 @@ public class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        // TCL (Smart TV Pro, Android 11) marks the home activity translucent (occludesParent=false) though its theme is
-        // opaque: the app just left stays visible under it, and when its layer waits on a frame it never draws, it
-        // stays on screen over ours. Opaque again; setTranslucent is public from Android 11.
+        // TCL's Android 11 records the home activity as translucent (occludesParent=false) whatever its theme says:
+        // Android then keeps the app just left visible, and home tasks are layered under all others, so that app stays
+        // on screen over ours. Opaque again on every resume (setTranslucent is public from Android 11).
         if (RemoteKeys.TCL && Build.VERSION.SDK_INT >= 30) setTranslucent(false);
         if (prefsVersion != Prefs.version) {
             prefsVersion = Prefs.version;
