@@ -528,7 +528,7 @@ var Data = (function () {
 
   function fmt(v, digits) {
     // Old WebKit (Tizen 2) has no Intl: toLocaleString ignores its options and prints every digit, without failing.
-    // ponytail: English separators there; a per-language table if someone asks.
+    // English separators there; a per-language table if someone asks.
     if (typeof Intl === 'undefined') return v.toFixed(digits).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     try { return v.toLocaleString(I18N.locale(), {minimumFractionDigits: digits, maximumFractionDigits: digits}); } catch (e) { return v.toFixed(digits); }
   }
