@@ -110,10 +110,12 @@ var TV = (function () {
   // Bixby, search, previews, the weather and notification popups, Apple TV's stand-in and engine.
   // A 2020 TU8000 (Tizen 5.5) ships Prime Video as org.tizen.primevideo, next to a -dummy and a _companionapp.
   // A 2023 Q60C (Tizen 9 in Brazil) ships Globoplay as org.tizen.globoplayapp.
+  // A 2023 CU7700 (Tizen 9) leaves `show` unset on ~500 apps: Samsung's system namespaces go, but for the store,
+  // SmartThings, Apple TV (aria-video), TV Plus, Gaming Hub and Windows 365.
   var SAMSUNG_HIDDEN = new RegExp('^(org\\.volt\\.|org\\.tizen\\.(?!browser$|netflix|primevideo$|globoplay)|org\\.tizen\\.netflixlowmem$|ise-|ug-|d75857a5-)' +
       '|[Ss]ervice$|[Dd]aemon|Preview$|syspopup|[Hh]elper$|AdPlayer|AdSuite|[Kk]eyboard|\\.OTApp$' +
       '|^com\\.samsung\\.calendar-account-manager' +
-      '|^com\\.samsung\\.tv\\.(?!store$|SmartThingsApp$|aria-video$|knox-browser-win365$)' +
+      '|^com\\.samsung\\.tv\\.(?!store$|SmartThingsApp$|aria-video$|knox-browser-win365$|tvplus$|gaminghub$)' +
       '|^com\\.samsung\\.tizen\\.' +
       '|^com\\.samsung\\.(ep[-.]|rdm[-.]|SelfDiagnosis$|mtm-banner$|hitcomp$|video-test$)' +
       '|^com\\.sausng\\.' +
