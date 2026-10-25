@@ -589,14 +589,18 @@ final class HomeApps {
      * channel (an app's, like RaiPlay's) instead, and Amazon's input player wants a permission only Amazon's apps have.
      * The switch takes the port's hardware number: HW2 is HDMI 1. Tested on a Xiaomi Fire TV (MediaTek, Fire OS 8).
      */
+    private static final Pattern HW = Pattern.compile("/HW(\\d+)$");
+
     private static boolean fireInput(Context c, Item it) {
-        Matcher m = Pattern.compile("/HW(\\d+)$").matcher(it.inputId);
+        Matcher m = HW.matcher(it.inputId);
         if (!m.find()) return false;
         Intent sw = new Intent().setComponent(new ComponentName("com.amazon.tv.inputpreference.service",
                 "com.amazon.tv.inputpreference.service.KaminoInputSwitchService"));
         if (c.getPackageManager().resolveService(sw, 0) == null) return false;
         try {
-            return c.startService(sw.putExtra("inputType", Integer.parseInt(m.group(1)))) != null;
+            if (c.startService(sw.putExtra("inputType", Integer.parseInt(m.group(1)))) == null) return false;
+            AppLog.w("Fire TV input: HW" + m.group(1) + " for " + it.label);   // another board may number its ports differently
+            return true;
         } catch (RuntimeException e) {
             AppLog.w("Amazon's input switch: " + e.getMessage());
             return false;
@@ -613,9 +617,9 @@ final class HomeApps {
         // opens the channel scan when there are none yet. The channels request would also offer Vewd's HbbTV player,
         // and Live TV on its own plays the last channel, which can be an app's (RaiPlay's).
         if (HomeMode.AMAZON) {
-            Intent antenna = new Intent().setComponent(new ComponentName("com.amazon.tv.livetv",
-                    "com.amazon.tv.livetv.DttIconWrapperActivity"));
-            if (antenna.resolveActivity(pm) != null) return antenna;
+            ComponentName dtt = new ComponentName("com.amazon.tv.livetv", "com.amazon.tv.livetv.DttIconWrapperActivity");
+            // exists(), not resolveActivity: that hands an explicit component back without looking (the sticks have none)
+            if (exists(c, dtt)) return new Intent().setComponent(dtt);
         }
         // MediaTek OneWorld TV Center (KTC/NextStar) has one input per tuner mode (antenna, cable, satellite): tuning one
         // switches the TV to that mode and hides the other channel lists, so it opens as it is, on its own last channel.
