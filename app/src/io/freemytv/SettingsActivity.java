@@ -195,8 +195,10 @@ public class SettingsActivity extends Activity {
                 recs = Recs.status(getContext());
                 boolean nowBusy = !busyText().isEmpty();
                 if (nowBusy) pendingAt = 0;
-                // What can change the reasons away from a key: a switch (or the watchdog's revert) and the overlay's check.
-                int whyNow = (freeActive() ? 1 : 0) | (Capabilities.refused(getContext(), Capabilities.OVERLAY) ? 2 : 0);
+                // What can change the reasons away from a key: a switch (or the watchdog's revert) and the overlay's and the
+                // listener's checks.
+                int whyNow = (freeActive() ? 1 : 0) | (Capabilities.refused(getContext(), Capabilities.OVERLAY) ? 2 : 0)
+                        | (Capabilities.refused(getContext(), Capabilities.LISTENER) ? 4 : 0);
                 if (whyNow != whyState) whyRows = null;
                 whyState = whyNow;
                 // A switch just ended: TalkBack reads how it went (the newest notice).
@@ -704,9 +706,9 @@ public class SettingsActivity extends Activity {
 
         private static final String[] UNITS = {"auto", "C", "F"}, THEMES = {"auto", "light", "dark"};
         /** Home Settings: language, temperature, theme, my photos, sounds, watch from the screensaver, weather, city, forecast,
-         *  quotes, then one row per coin. */
-        private static final int PHOTOS_ROW = 3, SAVER_ROW = 5, WEATHER_ROW = 6, CITY_ROW = 7, FORECAST_ROW = 8, QUOTES_ROW = 9,
-                COIN_ROWS = 10;
+         *  now playing, quotes, then one row per coin. */
+        private static final int PHOTOS_ROW = 3, SAVER_ROW = 5, WEATHER_ROW = 6, CITY_ROW = 7, FORECAST_ROW = 8, PLAYING_ROW = 9,
+                QUOTES_ROW = 10, COIN_ROWS = 11;
         /** Home Settings rows on screen at once (what fits above the hints at 1080p); a longer list scrolls. */
         private static final int SETTINGS_VISIBLE = 10;
 
@@ -725,6 +727,7 @@ public class SettingsActivity extends Activity {
             l.add(Ui.tr("Weather widget"));
             l.add(Ui.tr("City"));
             l.add(Ui.tr("Forecast"));
+            l.add(Ui.tr("Now Playing widget"));
             l.add(Ui.tr("Quotes widget"));
             l.add("Bitcoin");
             l.add("Ethereum");
@@ -750,6 +753,7 @@ public class SettingsActivity extends Activity {
             v[WEATHER_ROW] = onOff(Prefs.weather());
             v[CITY_ROW] = !cityStatus.isEmpty() ? cityStatus : Prefs.city().isEmpty() ? "—" : Prefs.city();
             v[FORECAST_ROW] = Prefs.forecast().equals("days") ? Ui.tr("Next days") : Ui.tr("Next hours");
+            v[PLAYING_ROW] = onOff(Prefs.nowPlaying());
             v[QUOTES_ROW] = onOff(Prefs.quotes());
             // No quotes widget, nowhere to show prices: the coins read as off (and stay locked) until it is back on.
             for (int i = COIN_ROWS; i < v.length; i++) v[i] = onOff(Prefs.quotes() && Prefs.coin(i - COIN_ROWS));
@@ -773,6 +777,8 @@ public class SettingsActivity extends Activity {
             switch (screen) {
                 case MAIN:
                     return i == 5 ? Capabilities.NEED_REMOTE_BUTTONS : i == 6 ? Capabilities.NEED_ADB : null;
+                case HOME_SETTINGS:
+                    return pickScroll + i == PLAYING_ROW ? Capabilities.NEED_LISTENER : null;
                 case POWER: {
                     int id = powerRows()[i];
                     return id == P_WHERE ? Capabilities.NEED_OVERLAY : null;
@@ -971,7 +977,9 @@ public class SettingsActivity extends Activity {
 
         /** Changes the focused row's value one step (OK and → go forward, ← goes back). */
         private void adjust(int dir) {
-            if (unavailable(focus) != null) return;
+            // Refused or without Free My TV mode, Now Playing can still be turned off (and the refusal is then forgotten).
+            boolean turnOff = screen == HOME_SETTINGS && pickScroll + focus == PLAYING_ROW && Prefs.nowPlaying();
+            if (unavailable(focus) != null && !turnOff) return;
             if (screen == POWER) {
                 int row = powerRow();
                 if (row == P_SLEEP) {
@@ -1019,6 +1027,10 @@ public class SettingsActivity extends Activity {
                 case FORECAST_ROW:   // both are in memory: nothing to fetch
                     Prefs.setForecast(Prefs.forecast().equals("days") ? "hours" : "days");
                     return;
+                case PLAYING_ROW:   // the listener follows the widget: allowed while it's on, taken back when it goes off
+                    Prefs.setNowPlaying(!Prefs.nowPlaying());
+                    HomeMode.nowPlayingAccess(getContext());
+                    break;
                 case QUOTES_ROW: Prefs.setQuotes(!Prefs.quotes()); break;
                 default:
                     if (!Prefs.quotes()) return;
