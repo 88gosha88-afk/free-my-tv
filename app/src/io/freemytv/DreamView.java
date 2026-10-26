@@ -226,6 +226,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         w = width;
         h = height;
         k = w / 1920f;
+        projectorEdge = null;   // made again for the new size
         scene.setSize(w, h);
         content.setPosition(0, 0, w, h);
         chrome.setPosition(0, 0, w, h);
@@ -445,7 +446,20 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         return up;
     }
 
+    private Paint projectorDim, projectorEdge;
+
     @Override protected void onDraw(Canvas canvas) {
+        drawContent(canvas);
+        if (w != 0 && Projector.on()) {
+            if (projectorEdge == null) {
+                projectorDim = Projector.dim();
+                projectorEdge = Projector.vignette(w, h);
+            }
+            Projector.draw(canvas, w, h, projectorDim, projectorEdge);
+        }
+    }
+
+    private void drawContent(Canvas canvas) {
         if (w == 0) return;
         long up = clock();
         long now = System.currentTimeMillis();

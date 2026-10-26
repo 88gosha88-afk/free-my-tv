@@ -535,6 +535,14 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         v.layout(x, y, x + v.getMeasuredWidth(), y + v.getMeasuredHeight());
     }
 
+    private Paint projectorDim, projectorEdge;
+
+    /** Projector mode: everything a little dimmer, the edges darker. */
+    @Override protected void dispatchDraw(Canvas c) {
+        super.dispatchDraw(c);
+        if (projectorEdge != null && Projector.on()) Projector.draw(c, w, h, projectorDim, projectorEdge);
+    }
+
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         w = width;
         h = height;
@@ -543,6 +551,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         scene.setSize(w, h);
         makePaints();
         gridLabels = null;
+        projectorDim = Projector.dim();
+        projectorEdge = Projector.vignette(w, h);
         clockMinute = -1;
         updateClock();
         layoutShelf();

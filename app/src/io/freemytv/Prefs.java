@@ -39,6 +39,10 @@ final class Prefs {
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read
     }
 
+    static Context context() {
+        return app;
+    }
+
     private static SharedPreferences sp() {
         return app.getSharedPreferences("settings", Context.MODE_PRIVATE);
     }
@@ -80,6 +84,14 @@ final class Prefs {
     }
 
     static void setTheme(String v) { put("theme", v); }
+
+    /** Projector mode: "auto" (on for Fengmi / Formovie projectors), "on" or "off". */
+    static String projector() {
+        String v = sp().getString("projector", "auto");
+        return v.equals("on") || v.equals("off") ? v : "auto";
+    }
+
+    static void setProjector(String v) { put("projector", v); }
 
     /** The screensaver: "aerial" (Apple's aerial videos), "photos" (the picks' photos) or "clock" (over the aurora). */
     static String screensaver() {

@@ -121,6 +121,7 @@ final class Spanish {
             case "Change video every": return "Cambiar el vídeo cada";
             case "When it ends": return "Al terminar";
             case "This projector keeps its own home screen: Free My TV opens over it.": return "Este proyector conserva su pantalla de inicio: Free My TV se abre encima.";
+            case "Projector mode": return "Modo proyector";
             case "Starts after": return "Empieza tras";
             case "TV's setting": return "El de la TV";
             case "Any": return "Cualquiera";

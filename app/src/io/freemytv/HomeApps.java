@@ -79,8 +79,17 @@ final class HomeApps {
      * (YouTube); empty = the art's colors as they are. Last, a visual size tweak for the logo. Edit freely.
      */
     private static final String[][] SHELF = {
-        {"netflix", "Netflix", "com.netflix.ninja", "E50914", "", "1"},
+        // Free to watch (with ads or a free section), the ones on Russian TVs and projectors.
+        {"vkvideo", "VK Видео", "com.vk.tv", "0077FF", "", "1"},
         {"youtube", "YouTube", "com.google.android.youtube.tv", "FF0033", "play", "1"},
+        {"wink", "Wink", "ru.rt.video.app.tv", "FF3366", "", "1"},
+        {"kion", "KION", "ru.mts.mtstv", "FF5B26", "", "1"},
+        {"okko", "Okko", "ru.more.play", "8A4FFF", "", "1"},
+        {"kinopoisk", "Кинопоиск", "ru.kinopoisk.tv", "FF6600", "", "1"},
+        {"start", "START", "ru.start.androidmobile", "F5C400", "", "1"},
+        {"premier", "PREMIER", "gpm.tnt_premier", "FF2E63", "", "1"},
+        {"vlc", "VLC", "org.videolan.vlc", "FF8800", "", "1"},
+        {"netflix", "Netflix", "com.netflix.ninja", "E50914", "", "1"},
         {"prime", "Prime Video", "com.amazon.amazonvideo.livingroom", "1A98FF", "tint", "0.96"},
         {"disney", "Disney+", "com.disney.disneyplus", "1838C8", "", "1"},
         {"max", "Max", "com.wbd.stream", "6C3BE0", "", "1.32"},

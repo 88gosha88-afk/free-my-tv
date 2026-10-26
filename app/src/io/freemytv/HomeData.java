@@ -303,6 +303,7 @@ final class HomeData {
      */
     boolean isNight(long now) {
         String theme = Prefs.theme();
+        if (Projector.on()) return true;   // a projector in a dark room: always the dark design
         if (theme.equals("dark")) return true;
         if (theme.equals("light")) return false;
         long t = Shaders.timeOfDay(now, 0);

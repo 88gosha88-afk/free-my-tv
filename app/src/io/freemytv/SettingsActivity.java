@@ -759,7 +759,7 @@ public class SettingsActivity extends Activity {
                     Ui.tr("Começa depois de", "Starts after"), Ui.tr("Fundo", "Background"),
                     Ui.tr("Lugar do fundo", "Background place"),
                     Ui.tr("Atualizar as fotos", "Update photos"), Ui.tr("Liberar espaço", "Free up space"),
-                    Ui.tr("Trocar o vídeo a cada", "Change video every")};
+                    Ui.tr("Trocar o vídeo a cada", "Change video every"), Ui.tr("Modo projetor", "Projector mode")};
         }
 
         private String[] saverValues() {
@@ -778,7 +778,9 @@ public class SettingsActivity extends Activity {
                                     : Ui.tr("Nada baixado", "Nothing downloaded"))
                             : Ui.tr("Apagar vídeos, ", "Delete videos, ") + (AerialStore.get(getContext()).size() >> 20) + " MB",
                     Prefs.saverSwitch() == 0 ? Ui.tr("No fim do vídeo", "When it ends")
-                            : Prefs.saverSwitch() + (Ui.ru ? " мин" : " min")};
+                            : Prefs.saverSwitch() + (Ui.ru ? " мин" : " min"),
+                    Prefs.projector().equals("on") ? Ui.tr("Ligado", "On")
+                            : Prefs.projector().equals("off") ? Ui.tr("Desligado", "Off") : Ui.tr("Automático", "Automatic")};
         }
 
         /** "12 photos, 3 days ago", or that new ones are on the way. */
@@ -850,6 +852,12 @@ public class SettingsActivity extends Activity {
                     int at = 0;
                     for (int i = 0; i < SWITCHES.length; i++) if (SWITCHES[i] == Prefs.saverSwitch()) at = i;
                     Prefs.setSaverSwitch(SWITCHES[step(at, dir, SWITCHES.length)]);
+                    break;
+                }
+                case 9: {
+                    String[] modes = {"auto", "on", "off"};
+                    int at = java.util.Arrays.asList(modes).indexOf(Prefs.projector());
+                    Prefs.setProjector(modes[step(at, dir, modes.length)]);
                     break;
                 }
                 default:
