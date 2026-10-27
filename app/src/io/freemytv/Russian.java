@@ -129,6 +129,7 @@ final class Russian {
             case "When it ends": return "В конце видео";
             case "This projector keeps its own home screen: Free My TV opens over it.": return "Этот проектор оставляет свой главный экран: Free My TV открывается поверх него.";
             case "Projector mode": return "Режим проектора";
+            case "Time zone": return "Часовой пояс";
             case "Starts after": return "Включается через";
             case "TV's setting": return "Как в ТВ";
             case "Any": return "Любое";

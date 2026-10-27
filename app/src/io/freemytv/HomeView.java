@@ -2647,7 +2647,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             showBackdrop(null);
         } else if (background.equals("apple") || cards.isEmpty()) {
             // Without a still yet (or any clip on disk), the gradient shows and the still fades in once it is ready.
-            showBackdrop(Ambient.get(getContext()).backdrop(background.equals("apple"), this::updatePicks));
+            showBackdrop(Ambient.get(getContext()).backdrop(true, this::updatePicks));   // none saved yet: fetch the photos too
         } else {
             Backdrop b = recs.backdrop(cards.get(0));
             if (b != null) showBackdrop(b);

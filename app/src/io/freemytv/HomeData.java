@@ -156,6 +156,7 @@ final class HomeData {
                 } catch (Exception e) {
                     pricesFailedAt = System.currentTimeMillis();
                     AppLog.w("prices: " + e.getMessage());
+                    if (e instanceof javax.net.ssl.SSLException || e instanceof java.security.GeneralSecurityException) TlsProbe.log("api.binance.com");
                 } finally {
                     fetchingPrices = false;
                 }

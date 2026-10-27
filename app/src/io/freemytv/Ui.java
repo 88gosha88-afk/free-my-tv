@@ -176,6 +176,13 @@ final class Ui {
 
     private static final HashMap<String, String> FORMATTED = new HashMap<>();
 
+    /** The time zone changed: the formatted times in the cache are for the old one. */
+    static void zoneChanged() {
+        synchronized (FORMATTED) {
+            FORMATTED.clear();
+        }
+    }
+
     /**
      * A formatted value, made once per language: the bottom drawer is redrawn on every frame of its focus animation,
      * and SimpleDateFormat and String.format there cost ~10 ms a frame on a Mi Box 3.

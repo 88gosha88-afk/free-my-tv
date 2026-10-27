@@ -362,6 +362,9 @@ final class AerialStore {
             return part.renameTo(target);
         } catch (IOException | GeneralSecurityException | RuntimeException e) {
             AppLog.w("aerials: download failed (" + clip.file() + "): " + e.getMessage());
+            if (e instanceof javax.net.ssl.SSLException || e instanceof GeneralSecurityException) {
+                try { TlsProbe.log(new URL(clip.url).getHost()); } catch (IOException ignored) {}
+            }
             return false;
         } finally {
             if (c != null) c.disconnect();

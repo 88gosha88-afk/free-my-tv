@@ -759,7 +759,8 @@ public class SettingsActivity extends Activity {
                     Ui.tr("Começa depois de", "Starts after"), Ui.tr("Fundo", "Background"),
                     Ui.tr("Lugar do fundo", "Background place"),
                     Ui.tr("Atualizar as fotos", "Update photos"), Ui.tr("Liberar espaço", "Free up space"),
-                    Ui.tr("Trocar o vídeo a cada", "Change video every"), Ui.tr("Modo projetor", "Projector mode")};
+                    Ui.tr("Trocar o vídeo a cada", "Change video every"), Ui.tr("Modo projetor", "Projector mode"),
+                    Ui.tr("Fuso horário", "Time zone")};
         }
 
         private String[] saverValues() {
@@ -780,7 +781,22 @@ public class SettingsActivity extends Activity {
                     Prefs.saverSwitch() == 0 ? Ui.tr("No fim do vídeo", "When it ends")
                             : Prefs.saverSwitch() + (Ui.ru ? " мин" : " min"),
                     Prefs.projector().equals("on") ? Ui.tr("Ligado", "On")
-                            : Prefs.projector().equals("off") ? Ui.tr("Desligado", "Off") : Ui.tr("Automático", "Automatic")};
+                            : Prefs.projector().equals("off") ? Ui.tr("Desligado", "Off") : Ui.tr("Automático", "Automatic"),
+                    zoneLabel(Prefs.timezone())};
+        }
+
+        /** The zones to pick from (the first, empty, is the TV's own). */
+        private static final String[] ZONES = {"", "Europe/Kaliningrad", "Europe/Moscow", "Europe/Samara", "Asia/Yekaterinburg",
+                "Asia/Omsk", "Asia/Novosibirsk", "Asia/Krasnoyarsk", "Asia/Irkutsk", "Asia/Yakutsk", "Asia/Vladivostok",
+                "Asia/Magadan", "Asia/Kamchatka", "Europe/Kyiv", "Europe/Minsk", "Europe/London", "Europe/Madrid",
+                "Europe/Berlin", "America/Sao_Paulo", "America/New_York", "Asia/Shanghai"};
+
+        /** "Europe/Moscow (UTC+3)", or the TV's own. */
+        private static String zoneLabel(String id) {
+            if (id.isEmpty()) return Ui.tr("Da TV", "TV's setting");
+            int min = java.util.TimeZone.getTimeZone(id).getOffset(System.currentTimeMillis()) / 60_000;
+            return id.substring(id.indexOf('/') + 1).replace('_', ' ') + " (UTC" + (min < 0 ? "-" : "+") + Math.abs(min) / 60
+                    + (min % 60 == 0 ? "" : ":" + String.format(java.util.Locale.US, "%02d", Math.abs(min) % 60)) + ")";
         }
 
         /** "12 photos, 3 days ago", or that new ones are on the way. */
@@ -858,6 +874,11 @@ public class SettingsActivity extends Activity {
                     String[] modes = {"auto", "on", "off"};
                     int at = java.util.Arrays.asList(modes).indexOf(Prefs.projector());
                     Prefs.setProjector(modes[step(at, dir, modes.length)]);
+                    break;
+                }
+                case 10: {
+                    int at = java.util.Arrays.asList(ZONES).indexOf(Prefs.timezone());
+                    Prefs.setTimezone(ZONES[step(at, dir, ZONES.length)]);
                     break;
                 }
                 default:

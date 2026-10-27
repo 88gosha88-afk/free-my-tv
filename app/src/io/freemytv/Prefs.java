@@ -37,6 +37,7 @@ final class Prefs {
         app = c.getApplicationContext();
         migrateKeys();   // before anything reads the button choices
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read
+        applyTimezone();
     }
 
     static Context context() {
@@ -92,6 +93,25 @@ final class Prefs {
     }
 
     static void setProjector(String v) { put("projector", v); }
+
+    /**
+     * The time zone for the clocks: "" = the TV's own. Some firmware (the Formovie projector) keeps the clock on Chinese
+     * time whatever the person sets, so the app can use another zone, for every process.
+     */
+    static String timezone() { return sp().getString("timezone", ""); }
+
+    static void setTimezone(String id) {
+        put("timezone", id);
+        applyTimezone();
+        Ui.zoneChanged();
+    }
+
+    private static final String SYSTEM_ZONE = java.util.TimeZone.getDefault().getID();
+
+    static void applyTimezone() {
+        String id = timezone();
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(id.isEmpty() ? SYSTEM_ZONE : id));
+    }
 
     /** The screensaver: "aerial" (Apple's aerial videos), "photos" (the picks' photos) or "clock" (over the aurora). */
     static String screensaver() {
