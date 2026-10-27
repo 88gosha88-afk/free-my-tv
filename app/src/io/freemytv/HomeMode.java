@@ -141,7 +141,7 @@ final class HomeMode {
      * boot check and an update turn it back on.
      */
     static void ensureRemoteService(Context c, long delayMs) {
-        if (RemoteKeys.supported()) ModeJob.schedule(c, ModeJob.REMOTE, null, delayMs);
+        if (RemoteKeys.supported() || projectorWithOwnHome(c)) ModeJob.schedule(c, ModeJob.REMOTE, null, delayMs);
     }
 
     /**
@@ -230,7 +230,9 @@ final class HomeMode {
     }
 
     static void ensureRemoteServiceNow(Context app) {
-        if (!RemoteKeys.supported() || !FREE.equals(state(app).optString("mode"))) return;
+        // On the projector the service has another job: the system starts it at every boot, and it opens our home screen.
+        boolean projector = projectorWithOwnHome(app);
+        if (!projector && (!RemoteKeys.supported() || !FREE.equals(state(app).optString("mode")))) return;
         try (Adb adb = Adb.connect(app, 10_000, null)) {
             remoteService(app, adb, true);
         } catch (IOException e) {
@@ -277,6 +279,7 @@ final class HomeMode {
         synchronized (RUN) {
             if (FREE.equals(mode) && projectorWithOwnHome(c)) {
                 // The projector's firmware keeps its own home screen: ours opens over it (and at every boot).
+                ensureRemoteService(c, 0);
                 openHome(c);
                 done(c, null);
                 notice(c, Ui.tr("Este projetor mantém o Início dele: o Free My TV abre por cima.",

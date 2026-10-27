@@ -449,7 +449,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
     private Paint projectorDim, projectorEdge;
 
     @Override protected void onDraw(Canvas canvas) {
-        drawContent(canvas);
+        drawFrame(canvas);
         if (w != 0 && Projector.on()) {
             if (projectorEdge == null) {
                 projectorDim = Projector.dim();
@@ -459,7 +459,7 @@ final class DreamView extends View implements Choreographer.FrameCallback, HomeD
         }
     }
 
-    private void drawContent(Canvas canvas) {
+    private void drawFrame(Canvas canvas) {
         if (w == 0) return;
         long up = clock();
         long now = System.currentTimeMillis();
