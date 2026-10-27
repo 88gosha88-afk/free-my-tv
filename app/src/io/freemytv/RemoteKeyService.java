@@ -25,7 +25,7 @@ public class RemoteKeyService extends AccessibilityService {
             if (boot != -1 && sp.getInt("opened", -2) == boot) return;
             if (!HomeMode.projectorWithOwnHome(this)) return;
             sp.edit().putInt("opened", boot).commit();
-            ModeJob.schedule(this, ModeJob.OPEN_HOME, "", 8_000);
+            ModeJob.schedule(this, ModeJob.OPEN_HOME, "", 1_000);
         } catch (Throwable ignored) {}
     }
 

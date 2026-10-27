@@ -186,7 +186,7 @@ final class HomeMode {
 
     /**
      * Opens our home screen once the projector's own launcher is on screen (it comes up a while after boot and would
-     * cover ours if we were early): looks at the top activity through the TV's ADB every 3 seconds, for up to 2 minutes.
+     * cover ours if we were early): looks at the top activity through the TV's ADB every second, for up to 2 minutes.
      * If ADB can't be used (the projector hasn't been told to allow it), opens it twice instead, 15 and 40 seconds in.
      */
     static void openHomeNow(Context app) {
@@ -203,7 +203,7 @@ final class HomeMode {
                     openHome(app);
                     return;
                 }
-                Thread.sleep(3_000);
+                Thread.sleep(1_000);
             }
             AppLog.w("open home at boot: the projector's launcher never showed");
         } catch (IOException e) {
