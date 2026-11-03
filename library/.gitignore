@@ -1,0 +1,6 @@
+# Free My Library: your settings, signing key, downloaded libraries and build output stay on your machine
+config.properties
+*.keystore
+libs/
+out/
+*.apk
