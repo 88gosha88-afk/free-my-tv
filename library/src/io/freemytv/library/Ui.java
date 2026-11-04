@@ -17,8 +17,38 @@ import java.util.Locale;
 final class Ui {
     private Ui() {}
 
-    static final int BG = 0xFF0D1017, SURFACE = 0xFF1B2130, SURFACE_HI = 0xFF283148, ACCENT = 0xFF6EA8FE, TEXT = 0xFFEEF1F6,
+    static int BG = 0xFF0D1017, SURFACE = 0xFF1B2130, SURFACE_HI = 0xFF283148, ACCENT = 0xFF6EA8FE, TEXT = 0xFFEEF1F6,
             DIM = 0xFF9AA5B8, WARN = 0xFFFFB86B;
+    /** Over a video the text stays white whatever the theme is. */
+    static final int VIDEO_TEXT = 0xFFFFFFFF, VIDEO_DIM = 0xFFC3CAD8;
+    private static boolean light, black;
+
+    /** Sets the colours for the chosen theme; returns a short code of the look, to tell a screen it is out of date. */
+    static String refresh() {
+        String t = Prefs.theme();
+        light = "light".equals(t);
+        black = "black".equals(t);
+        if (light) {
+            BG = 0xFFF2F4F8; SURFACE = 0xFFFFFFFF; SURFACE_HI = 0xFFE3E8F1; ACCENT = 0xFF1F6FEB; TEXT = 0xFF111827;
+            DIM = 0xFF5B6678; WARN = 0xFFB45309;
+        } else if (black) {
+            BG = 0xFF000000; SURFACE = 0xFF0C0C0C; SURFACE_HI = 0xFF1A1A1A; ACCENT = 0xFF6EA8FE; TEXT = 0xFFEDEDED;
+            DIM = 0xFF8E8E93; WARN = 0xFFFFB86B;
+        } else {
+            BG = 0xFF0D1017; SURFACE = 0xFF1B2130; SURFACE_HI = 0xFF283148; ACCENT = 0xFF6EA8FE; TEXT = 0xFFEEF1F6;
+            DIM = 0xFF9AA5B8; WARN = 0xFFFFB86B;
+        }
+        return t + "|" + Prefs.scene();
+    }
+
+    static boolean light() { return light; }
+
+    static boolean black() { return black; }
+
+    /** Glass is white over a dark background and dark over a light one. */
+    private static int g(int alpha) {
+        return light ? ((alpha * 2 / 5) << 24) : (alpha << 24) | 0xFFFFFF;
+    }
 
     static int dp(Context c, float v) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()));
@@ -46,20 +76,69 @@ final class Ui {
         return t;
     }
 
-    /** A focusable button: dark, bright when the remote is on it. */
+    /** A focusable button of frosted glass: lighter, with a thin bright edge, while the remote is on it. */
     static TextView button(Context c, String label) {
         TextView t = text(c, label, 17, TEXT);
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(c, 22), dp(c, 12), dp(c, 22), dp(c, 12));
         t.setFocusable(true);
         t.setClickable(true);
-        t.setBackground(focusBackground(c, SURFACE, ACCENT, 10));
-        t.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override public void onFocusChange(View v, boolean has) {
-                ((TextView) v).setTextColor(has ? 0xFF0B1220 : TEXT);
-            }
-        });
+        t.setBackground(glassFocus(c, 14, false));
         return t;
+    }
+
+    // MARK: - Glass: translucent white over the background, a thin lighter edge on top; no heavy outlines
+
+    private static GradientDrawable glassShape(Context c, float radiusDp, int top, int bottom, int edge, float edgeDp) {
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {top, bottom});
+        d.setCornerRadius(dp(c, radiusDp));
+        d.setStroke(Math.max(1, dp(c, edgeDp)), edge);
+        return d;
+    }
+
+    /** Rounds the corners of a picture. */
+    static void roundCorners(View v, final float radiusPx) {
+        v.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline o) { o.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radiusPx); }
+        });
+        v.setClipToOutline(true);
+    }
+
+    /** A resting glass panel. */
+    static GradientDrawable glass(Context c, float radiusDp) {
+        return glassShape(c, radiusDp, g(0x2E), g(0x12), g(0x33), 1f);
+    }
+
+    /** Glass that lights up (the one the remote is on). */
+    static GradientDrawable glassLit(Context c, float radiusDp) {
+        return glassShape(c, radiusDp, g(0x52), g(0x2E), g(0x80), 1.25f);
+    }
+
+    /** A button or tile: glass at rest, lit when focused; `on` keeps it lit (the chosen one of a group). */
+    static StateListDrawable glassFocus(Context c, float radiusDp, boolean on) {
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_focused}, glassLit(c, radiusDp));
+        s.addState(new int[] {android.R.attr.state_pressed}, glassLit(c, radiusDp));
+        s.addState(new int[] {}, on ? glassShape(c, radiusDp, g(0x3D), g(0x1F), g(0x55), 1f) : glass(c, radiusDp));
+        return s;
+    }
+
+    /** A row of a list: nothing at rest, glass when focused. */
+    static StateListDrawable rowFocus(Context c, float radiusDp) {
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_focused}, glassLit(c, radiusDp));
+        s.addState(new int[] {android.R.attr.state_pressed}, glassLit(c, radiusDp));
+        s.addState(new int[] {}, round(0, radiusDp, c));
+        return s;
+    }
+
+    /** The same for a ListView row: lit while the list's selection is on it. */
+    static StateListDrawable rowSelection(Context c, float radiusDp) {
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[] {android.R.attr.state_selected}, glassLit(c, radiusDp));
+        s.addState(new int[] {android.R.attr.state_pressed}, glassLit(c, radiusDp));
+        s.addState(new int[] {}, round(0, radiusDp, c));
+        return s;
     }
 
     static StateListDrawable focusBackground(Context c, int normal, int focused, float radiusDp) {

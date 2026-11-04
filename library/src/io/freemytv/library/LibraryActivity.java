@@ -31,12 +31,16 @@ public class LibraryActivity extends Activity implements Library.Listener {
     private String query = "";
     private boolean newestFirst;
     private GridView grid;
+    private Backdrop backdrop;
     private TextView searchButton, orderButton, count;
     private Adapter adapter;
+
+    private String look = "";
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         lib = Library.get(this);
+        look = Ui.refresh();
         shows = "shows".equals(getIntent().getStringExtra("kind"));
         getWindow().getDecorView().setBackgroundColor(Ui.BG);
 
@@ -91,12 +95,26 @@ public class LibraryActivity extends Activity implements Library.Listener {
             }
         });
         root.addView(grid, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        setContentView(root);
+        grid.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> p, View v, int position, long id) {
+                if (position < 0 || position >= items.size()) return;
+                Object o = items.get(position);
+                io.freemytv.library.core.Tmdb.Meta m = o instanceof Catalog.Show ? lib.tmdb().cached(((Catalog.Show) o).key) : lib.metaOf((Entry) o);
+                backdrop.show(LibraryActivity.this, m != null && m.found() ? m.backdrop : "");
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> p) { }
+        });
+        android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
+        backdrop = new Backdrop(this);
+        stage.addView(backdrop, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        stage.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(stage);
         reload();
     }
 
     @Override protected void onStart() {
         super.onStart();
+        if (!look.equals(Ui.refresh())) { recreate(); return; }
         lib.listen(this);
         reload();
     }

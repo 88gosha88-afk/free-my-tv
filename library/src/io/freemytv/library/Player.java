@@ -27,7 +27,7 @@ final class Player {
 
     static void open(final Activity a, final Library lib, final Entry e, final boolean restart) {
         if (Prefs.builtin()) {
-            a.startActivity(new Intent(a, PlayerActivity.class).putExtra("path", e.path).putExtra("restart", restart));
+            a.startActivity(new Intent(a, PlayerActivity.class).putExtra("path", e.path).putExtra("restart", restart).putExtra("size", e.size));
             return;
         }
         // The address is made off the main thread (the network folder is opened and the local server started there).

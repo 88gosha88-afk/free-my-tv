@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import io.freemytv.library.core.Entry;
 import io.freemytv.library.core.Folder;
 import io.freemytv.library.core.Node;
 import io.freemytv.library.core.Scanner;
@@ -36,16 +37,20 @@ public class FoldersActivity extends Activity {
     private ListView list;
     private Adapter adapter;
     private int loadId;
+    private final java.util.Map<String, Integer> positions = new java.util.HashMap<>();   // where the list was in each folder
+
+    private String look = "";
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         lib = Library.get(this);
+        look = Ui.refresh();
         getWindow().getDecorView().setBackgroundColor(Ui.BG);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 20));
         root.addView(Ui.bold(this, "Папки медиатеки", 28, Ui.TEXT));
-        TextView hint = Ui.text(this, "OK — открыть папку.  Стрелка вправо (или удержание OK) — добавить в медиатеку или исключить.", 14, Ui.DIM);
+        TextView hint = Ui.text(this, "OK на папке — открыть, на видео — смотреть.  Стрелка вправо (или удержание OK) — добавить папку в избранное на главном экране (файлы из неё попадут в медиатеку) или исключить.", 14, Ui.DIM);
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         hl.topMargin = Ui.dp(this, 6);
         root.addView(hint, hl);
@@ -65,7 +70,7 @@ public class FoldersActivity extends Activity {
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override public void onItemClick(AdapterView<?> p, View v, int position, long id) {
                 Node n = nodes.get(position);
-                if (n.dir) go(Scanner.join(path, n.name)); else choose(n);
+                if (n.dir) go(Scanner.join(path, n.name)); else play(n);
             }
         });
         list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
@@ -77,8 +82,17 @@ public class FoldersActivity extends Activity {
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         ll.topMargin = Ui.dp(this, 10);
         root.addView(list, ll);
-        setContentView(root);
-        go("");
+        android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
+        stage.addView(new Backdrop(this), new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        stage.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(stage);
+        String start = getIntent().getStringExtra("path");
+        go(start == null ? "" : start);
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        if (!look.equals(Ui.refresh())) recreate();
     }
 
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -96,6 +110,7 @@ public class FoldersActivity extends Activity {
     }
 
     private void go(final String target) {
+        positions.put(path, Math.max(0, list.getSelectedItemPosition()));
         path = target;
         where.setText("/" + target);
         message.setText("Читаю папку…");
@@ -133,10 +148,20 @@ public class FoldersActivity extends Activity {
                         message.setText(err != null ? "Не удалось прочитать: " + err : nodes.isEmpty() ? "Здесь нет папок и видео." : "");
                         adapter.notifyDataSetChanged();
                         list.requestFocus();
+                        Integer at = positions.get(target);
+                        if (at != null && !nodes.isEmpty()) list.setSelection(Math.min(at, nodes.size() - 1));
                     }
                 });
             }
         }).start();
+    }
+
+    /** Starts a video from the tree: the library's own entry if it has one, otherwise one made from the file's name. */
+    private void play(Node n) {
+        String full = Scanner.join(path, n.name);
+        Entry e = lib.catalog.byPath(full);
+        if (e == null) e = Scanner.loose(full, n.size, n.mtime);
+        Player.open(this, lib, e, false);
     }
 
     private static String extOf(String name) {
@@ -170,28 +195,28 @@ public class FoldersActivity extends Activity {
         String full = Scanner.join(path, n.name);
         if (excluded(full)) return "исключено";
         Folder f = libraryFolder(full);
-        if (f != null) return "в медиатеке · " + kindName(f.kind);
+        if (f != null) return "★ избранное · " + kindName(f.kind);
         if (insideLibrary(full)) return n.dir ? "внутри медиатеки" : "в медиатеке";
         return "";
     }
 
-    private void choose(Node n) {
+    private void choose(final Node n) {
         final String full = Scanner.join(path, n.name);
         final List<String> labels = new ArrayList<>();
         final List<Runnable> actions = new ArrayList<>();
         final boolean isOut = excluded(full);
         if (n.dir) {
-            add(labels, actions, "Добавить: авто (по названиям файлов)", new Runnable() {
+            add(labels, actions, "В избранное: авто (по названиям файлов)", new Runnable() {
                 @Override public void run() { lib.addFolder(full, Folder.AUTO); afterChange(); }
             });
-            add(labels, actions, "Добавить как фильмы", new Runnable() {
+            add(labels, actions, "В избранное как фильмы", new Runnable() {
                 @Override public void run() { lib.addFolder(full, Folder.MOVIES); afterChange(); }
             });
-            add(labels, actions, "Добавить как сериалы", new Runnable() {
+            add(labels, actions, "В избранное как сериалы", new Runnable() {
                 @Override public void run() { lib.addFolder(full, Folder.SHOWS); afterChange(); }
             });
             if (libraryFolder(full) != null) {
-                add(labels, actions, "Убрать из медиатеки", new Runnable() {
+                add(labels, actions, "Убрать из избранного", new Runnable() {
                     @Override public void run() { lib.removeFolder(full); afterChange(); }
                 });
             }
@@ -209,6 +234,11 @@ public class FoldersActivity extends Activity {
                 @Override public void run() { lib.exclude(full); afterChange(); }
             });
         }
+        add(labels, actions, n.dir ? "Удалить папку с диска…" : "Удалить файл с диска…", new Runnable() {
+            @Override public void run() { Deleter.ask(FoldersActivity.this, lib, full, n.dir, new Runnable() {
+                @Override public void run() { go(path); }
+            }); }
+        });
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(n.name)
                 .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
@@ -250,7 +280,7 @@ public class FoldersActivity extends Activity {
                 state = Ui.text(FoldersActivity.this, "", 15, Ui.ACCENT);
                 row.addView(name, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
                 row.addView(state, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                row.setBackground(Ui.selectionBackground(FoldersActivity.this, Ui.BG, Ui.SURFACE_HI, 8));
+                row.setBackground(Ui.rowSelection(FoldersActivity.this, 12));
             }
             name.setText((n.dir ? "📁  " : "🎞  ") + n.name + (n.dir ? "" : "   " + Ui.size(n.size)));
             String st = stateOf(n);

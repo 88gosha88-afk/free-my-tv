@@ -21,18 +21,25 @@ import java.util.List;
 public class SettingsActivity extends Activity {
     private Library lib;
     private LinearLayout page;
+    private static int keepRow = -1;      // the row the remote was on, kept over a redraw (and over a new window after a theme change)
     private TextView result;
+
+    private String look = "";
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         lib = Library.get(this);
+        look = Ui.refresh();
         getWindow().getDecorView().setBackgroundColor(Ui.BG);
         ScrollView scroll = new ScrollView(this);
         page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 40));
         scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(scroll);
+        android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
+        stage.addView(new Backdrop(this), new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        stage.addView(scroll, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(stage);
     }
 
     @Override protected void onStart() {
@@ -41,6 +48,8 @@ public class SettingsActivity extends Activity {
     }
 
     private void render() {
+        final int row = keepRow;
+        keepRow = -1;
         page.removeAllViews();
         page.addView(Ui.bold(this, "Настройки", 28, Ui.TEXT));
         row("Адрес диска", Prefs.smbUrl(), new Runnable() {
@@ -74,10 +83,49 @@ public class SettingsActivity extends Activity {
                 });
             }
         });
+        row("Тема", "light".equals(Prefs.theme()) ? "светлая" : "black".equals(Prefs.theme()) ? "чёрная" : "тёмная", new Runnable() {
+            @Override public void run() {
+                String t = Prefs.theme();
+                Prefs.setTheme("dark".equals(t) ? "light" : "light".equals(t) ? "black" : "dark");
+                recreate();
+            }
+        });
+        row("Фон", sceneName(Prefs.scene()), new Runnable() {
+            @Override public void run() {
+                String[] all = {"film", "aurora", "mountains", "dunes", "ocean", "plain"};
+                String cur = Prefs.scene();
+                String next = all[0];
+                for (int i = 0; i < all.length; i++) if (all[i].equals(cur)) { next = all[(i + 1) % all.length]; break; }
+                Prefs.setScene(next);
+                recreate();
+            }
+        });
         row("Озвучка по умолчанию", "ru".equals(Prefs.audio()) ? "русская, если есть" : "как в файле", new Runnable() {
             @Override public void run() {
                 Prefs.setAudio("ru".equals(Prefs.audio()) ? "orig" : "ru");
                 render();
+            }
+        });
+        row("История просмотра на главной", Prefs.showHistory() ? "показывать" : "скрыта", new Runnable() {
+            @Override public void run() {
+                Prefs.setShowHistory(!Prefs.showHistory());
+                render();
+            }
+        });
+        row("Очистить историю просмотра", "", new Runnable() {
+            @Override public void run() {
+                new AlertDialog.Builder(SettingsActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("Очистить историю?")
+                        .setMessage("Пропадёт «Продолжить просмотр». Отметки «просмотрено» останутся.")
+                        .setPositiveButton("Очистить", new DialogInterface.OnClickListener() {
+                            @Override public void onClick(DialogInterface d, int w) {
+                                lib.catalog.clearHistory();
+                                lib.refreshView();
+                                result.setText("История очищена.");
+                            }
+                        })
+                        .setNegativeButton("Отмена", null)
+                        .show();
             }
         });
         row("Проигрыватель", Prefs.builtin() ? "встроенный" : "внешний (VLC)", new Runnable() {
@@ -89,6 +137,22 @@ public class SettingsActivity extends Activity {
         row("Как читать файл с диска", Prefs.direct() ? "напрямую по SMB" : "через сервер приложения", new Runnable() {
             @Override public void run() {
                 Prefs.setDirect(!Prefs.direct());
+                render();
+            }
+        });
+        row("Буфер чтения (тяжёлые файлы)", Prefs.buffer() == 0 ? "авто" : Prefs.buffer() + " с", new Runnable() {
+            @Override public void run() {
+                int[] steps = {0, 4, 8, 15, 30, 60};
+                int next = steps[0];
+                for (int i = 0; i < steps.length; i++) if (steps[i] == Prefs.buffer()) { next = steps[(i + 1) % steps.length]; break; }
+                Prefs.setBuffer(next);
+                render();
+            }
+        });
+        row("Декодирование видео", "hw".equals(Prefs.decoder()) ? "аппаратное, принудительно" : "sw".equals(Prefs.decoder()) ? "программное" : "lite".equals(Prefs.decoder()) ? "программное, облегчённое (для VC-1 и тяжёлых файлов)" : "авто", new Runnable() {
+            @Override public void run() {
+                String d = Prefs.decoder();
+                Prefs.setDecoder("auto".equals(d) ? "hw" : "hw".equals(d) ? "sw" : "sw".equals(d) ? "lite" : "auto");
                 render();
             }
         });
@@ -105,6 +169,21 @@ public class SettingsActivity extends Activity {
         LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         rl.topMargin = Ui.dp(this, 20);
         page.addView(result, rl);
+        if (row >= 0 && row < page.getChildCount()) {
+            final View target = page.getChildAt(row);
+            target.post(new Runnable() { @Override public void run() { target.requestFocus(); } });
+        }
+    }
+
+    private static String sceneName(String s) {
+        switch (s) {
+            case "aurora": return "северное сияние";
+            case "mountains": return "горы";
+            case "dunes": return "дюны";
+            case "ocean": return "море";
+            case "plain": return "однотонный";
+            default: return "картинка выбранного фильма";
+        }
     }
 
     private interface Value {
@@ -115,7 +194,10 @@ public class SettingsActivity extends Activity {
         TextView t = Ui.button(this, value.isEmpty() ? label : label + "   ·   " + value);
         t.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
         t.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { action.run(); }
+            @Override public void onClick(View v) {
+                keepRow = page.indexOfChild(v);
+                action.run();
+            }
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(this, 12);

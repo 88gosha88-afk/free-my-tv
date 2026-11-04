@@ -171,6 +171,38 @@ public final class Catalog {
         saveProgressFile();
     }
 
+    /** A file or folder was deleted from the disk: its entries, positions and watched marks go with it. */
+    public synchronized void removePath(String path) {
+        String dir = path + "/";
+        for (java.util.Iterator<Entry> it = entries.iterator(); it.hasNext(); ) {
+            Entry e = it.next();
+            if (e.path.equals(path) || e.path.startsWith(dir)) it.remove();
+        }
+        for (java.util.Iterator<String> it = progress.keySet().iterator(); it.hasNext(); ) {
+            String k = it.next();
+            if (k.equals(path) || k.startsWith(dir)) it.remove();
+        }
+        saveEntries();
+        saveProgressFile();
+    }
+
+    /** Takes a film or an episode out of the history ("continue watching"); a watched mark stays. */
+    public synchronized void forget(String path) {
+        Progress p = progress.get(path);
+        if (p == null || p.watched()) return;
+        progress.remove(path);
+        saveProgressFile();
+    }
+
+    /** Empties "continue watching": every started (not finished) position goes; watched marks stay. */
+    public synchronized void clearHistory() {
+        boolean any = false;
+        for (java.util.Iterator<Progress> it = progress.values().iterator(); it.hasNext(); ) {
+            if (it.next().started()) { it.remove(); any = true; }
+        }
+        if (any) saveProgressFile();
+    }
+
     /** Started but not finished, the latest first. */
     public synchronized List<Entry> continueWatching(int limit) {
         List<Entry> out = new ArrayList<>();
@@ -223,13 +255,20 @@ public final class Catalog {
         }
     }
 
+    private int version;
+
+    /** Changes whenever the list, a position or a fix changes: a screen can tell cheaply whether it is out of date. */
+    public synchronized int version() { return version; }
+
     private void saveEntries() {
+        version++;
         List<String> lines = new ArrayList<>();
         for (Entry e : entries) lines.add(e.toLine());
         writeLines(new File(dir, "catalog.tsv"), lines);
     }
 
     private void saveProgressFile() {
+        version++;
         List<String> lines = new ArrayList<>();
         for (Map.Entry<String, Progress> m : progress.entrySet()) {
             Progress p = m.getValue();
@@ -239,6 +278,7 @@ public final class Catalog {
     }
 
     private void saveFixes() {
+        version++;
         List<String> lines = new ArrayList<>();
         for (Map.Entry<String, String> m : fixes.entrySet()) lines.add(m.getKey() + "\t" + m.getValue());
         writeLines(new File(dir, "fixes.tsv"), lines);

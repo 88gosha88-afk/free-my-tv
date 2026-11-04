@@ -59,6 +59,10 @@ public class PlayerActivity extends Activity {
     private long time, length, lastSaved, seekTarget = -1;
     private boolean paused, errored, released, direct, triedOther;
     private int tracksTried;
+    private boolean shuffle;
+    private final java.util.Random random = new java.util.Random();
+    private final java.util.Set<String> played = new java.util.HashSet<>();
+    private final List<Entry> trail = new ArrayList<>();   // what was played before this one, for "previous"
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -68,6 +72,10 @@ public class PlayerActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         String path = getIntent().getStringExtra("path");
         entry = path == null ? null : lib.catalog.byPath(path);
+        if (entry == null && path != null && getIntent().hasExtra("size")) {
+            // A file opened from the folder tree that the library does not hold: play it on its own.
+            entry = Scanner.loose(path, getIntent().getLongExtra("size", 0), 0);
+        }
         if (entry == null) { finish(); return; }
         if (entry.episode) {
             for (Catalog.Show s : lib.catalog.shows()) {
@@ -76,13 +84,14 @@ public class PlayerActivity extends Activity {
             }
         }
         direct = Prefs.direct();
+        shuffle = Prefs.shuffle();
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(0xFF000000);
         surface = new SurfaceView(this);
         root.addView(surface, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        centerView = Ui.bold(this, "", 22, Ui.TEXT);
+        centerView = Ui.bold(this, "", 22, Ui.VIDEO_TEXT);
         centerView.setGravity(Gravity.CENTER);
         centerView.setShadowLayer(8, 0, 2, 0xFF000000);
         root.addView(centerView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
@@ -92,7 +101,7 @@ public class PlayerActivity extends Activity {
         panel.setPadding(Ui.dp(this, 48), Ui.dp(this, 24), Ui.dp(this, 48), Ui.dp(this, 28));
         panel.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] {0x00000000, 0xCC000000}));
-        titleView = Ui.bold(this, "", 22, Ui.TEXT);
+        titleView = Ui.bold(this, "", 22, Ui.VIDEO_TEXT);
         titleView.setSingleLine(true);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         panel.addView(titleView);
@@ -103,11 +112,11 @@ public class PlayerActivity extends Activity {
         LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 6));
         bl.topMargin = Ui.dp(this, 12);
         panel.addView(bar, bl);
-        timeView = Ui.text(this, "", 16, Ui.TEXT);
+        timeView = Ui.text(this, "", 16, Ui.VIDEO_TEXT);
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tl.topMargin = Ui.dp(this, 8);
         panel.addView(timeView, tl);
-        hintView = Ui.text(this, "OK — пауза    ◀ ▶ — перемотка    ▲ — озвучка    ▼ — субтитры    Меню — скорость    Назад — выйти", 13, Ui.DIM);
+        hintView = Ui.text(this, "OK — пауза    ◀ ▶ — перемотка    ▲ ▼ — меню: серии, озвучка, субтитры, перемешивание, скорость    Назад — выйти", 13, Ui.VIDEO_DIM);
         panel.addView(hintView);
         overlay = panel;
         root.addView(panel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
@@ -149,6 +158,7 @@ public class PlayerActivity extends Activity {
 
     private void play(Entry e, boolean restart) {
         entry = e;
+        played.add(e.path);
         errored = false;
         tracksTried = 0;
         time = 0;
@@ -185,8 +195,19 @@ public class PlayerActivity extends Activity {
         try {
             android.util.Log.i("FreeMyLibrary", "player: " + (direct ? "direct " : "via server ") + e.path);
             Media media = new Media(vlc, Uri.parse(url));
-            media.setHWDecoderEnabled(true, false);
-            media.addOption(":network-caching=4000");
+            String dec = Prefs.decoder();
+            media.setHWDecoderEnabled(!"sw".equals(dec) && !"lite".equals(dec), "hw".equals(dec));
+            if ("lite".equals(dec)) {
+                // Lighter on the processor: no loop filter, faster (less exact) decoding, all the cores.
+                media.addOption(":avcodec-skiploopfilter=4");
+                media.addOption(":avcodec-fast");
+                media.addOption(":avcodec-threads=0");
+            }
+            // A huge file (a 4K remux of 20 GB and more) is read at a high rate: it needs a longer run-up.
+            int ms = Prefs.buffer() > 0 ? Prefs.buffer() * 1000 : e.size > 8L * 1024 * 1024 * 1024 ? 15000 : 4000;
+            media.addOption(":network-caching=" + ms);
+            media.addOption(":file-caching=" + ms);
+            media.addOption(":live-caching=" + ms);
             Catalog.Progress p = lib.catalog.progress(e.path);
             if (!restart && p != null && p.started()) media.addOption(":start-time=" + (p.position / 1000.0));
             for (int i = 0; i < extras.size(); i++) {
@@ -267,12 +288,177 @@ public class PlayerActivity extends Activity {
 
     private void ended() {
         lib.catalog.markWatched(entry.path, true);
-        int i = playlist.indexOf(entry);
-        if (i >= 0 && i + 1 < playlist.size()) {
-            play(playlist.get(i + 1), true);
+        Entry next = pickNext();
+        if (next != null) {
+            trail.add(entry);
+            play(next, true);
         } else {
             finish();
         }
+    }
+
+    // MARK: - Order: next, previous, shuffle
+
+    /** What plays after this one: the next episode in order; in shuffle a random one not played yet (films too). */
+    private List<Entry> sequence() {
+        if (entry.episode) return playlist;
+        return shuffle ? lib.catalog.movies() : new ArrayList<Entry>();
+    }
+
+    private Entry pickNext() {
+        List<Entry> seq = sequence();
+        if (seq.isEmpty()) return null;
+        if (shuffle) {
+            List<Entry> left = new ArrayList<>();
+            for (Entry e : seq) if (!played.contains(e.path)) left.add(e);
+            if (left.isEmpty()) {            // everything has played: start over, but not with the same one
+                played.clear();
+                played.add(entry.path);
+                for (Entry e : seq) if (!e.path.equals(entry.path)) left.add(e);
+            }
+            return left.isEmpty() ? null : left.get(random.nextInt(left.size()));
+        }
+        int i = seq.indexOf(entry);
+        return i >= 0 && i + 1 < seq.size() ? seq.get(i + 1) : null;
+    }
+
+    private Entry pickPrevious() {
+        if (!trail.isEmpty()) return trail.remove(trail.size() - 1);
+        List<Entry> seq = sequence();
+        int i = seq.indexOf(entry);
+        return i > 0 ? seq.get(i - 1) : null;
+    }
+
+    private void goNext() {
+        Entry next = pickNext();
+        if (next == null) { toast("Дальше ничего нет"); return; }
+        saveProgress();
+        trail.add(entry);
+        play(next, false);
+    }
+
+    private void goPrevious() {
+        Entry prev = pickPrevious();
+        if (prev == null) { toast("Это первое"); return; }
+        saveProgress();
+        play(prev, false);
+    }
+
+    private void toast(final String text) {
+        centerView.setText(text);
+        h.postDelayed(new Runnable() {
+            @Override public void run() { if (!released && centerView.getText().toString().equals(text)) centerView.setText(""); }
+        }, 1800);
+    }
+
+    // MARK: - The menu (Menu key)
+
+    private void showMenu() {
+        final List<String> labels = new ArrayList<>();
+        final List<Runnable> actions = new ArrayList<>();
+        if (entry.episode && playlist.size() > 1) {
+            labels.add("Серии…");
+            actions.add(new Runnable() { @Override public void run() { chooseEpisode(); } });
+            labels.add("Следующая серия");
+            actions.add(new Runnable() { @Override public void run() { goNext(); } });
+            labels.add("Предыдущая серия");
+            actions.add(new Runnable() { @Override public void run() { goPrevious(); } });
+        } else if (shuffle) {
+            labels.add("Другой фильм (случайный)");
+            actions.add(new Runnable() { @Override public void run() { goNext(); } });
+        }
+        labels.add(shuffle ? "Перемешивание: включено" : "Перемешивание: выключено");
+        actions.add(new Runnable() {
+            @Override public void run() {
+                shuffle = !shuffle;
+                Prefs.setShuffle(shuffle);
+                played.clear();
+                played.add(entry.path);
+                updateBar();
+                toast(shuffle ? (entry.episode ? "Серии вперемешку" : "Дальше — случайные фильмы") : "Перемешивание выключено");
+            }
+        });
+        labels.add("Озвучка…");
+        actions.add(new Runnable() { @Override public void run() { chooseTrack(true); } });
+        labels.add("Субтитры…");
+        actions.add(new Runnable() { @Override public void run() { chooseTrack(false); } });
+        labels.add("Скорость…");
+        actions.add(new Runnable() { @Override public void run() { chooseSpeed(); } });
+        labels.add("Сведения о воспроизведении…");
+        actions.add(new Runnable() { @Override public void run() { showStats(); } });
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(titleOf(entry))
+                .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int which) { actions.get(which).run(); }
+                })
+                .show();
+    }
+
+    /** What the file is and how the playback goes: tells a slow disk (low input rate) from a slow processor (lost pictures). */
+    private void showStats() {
+        StringBuilder b = new StringBuilder();
+        try {
+            IMedia m = player.getMedia();
+            if (m != null) {
+                for (int i = 0; i < m.getTrackCount(); i++) {
+                    IMedia.Track t = m.getTrack(i);
+                    if (t.type == IMedia.Track.Type.Video) {
+                        IMedia.VideoTrack v = (IMedia.VideoTrack) t;
+                        b.append("Видео: ").append(t.codec).append(' ').append(v.width).append('×').append(v.height).append('\n');
+                    } else if (t.type == IMedia.Track.Type.Audio) {
+                        b.append("Звук: ").append(t.codec).append('\n');
+                    }
+                }
+                IMedia.Stats s = m.getStats();
+                if (s != null) {
+                    b.append("Читается с диска ≈ ").append(Math.round(s.inputBitrate * 8000)).append(" кбит/с\n");
+                    b.append("Показано кадров: ").append(s.displayedPictures).append('\n');
+                    b.append("Потеряно кадров: ").append(s.lostPictures).append('\n');
+                    if (s.displayedPictures > 30 && s.lostPictures * 20 > s.displayedPictures) {
+                        b.append("\nПроцессор не успевает за видео (диск тут ни при чём). В «Настройках» → «Декодирование видео» попробуйте «аппаратное», а если не поможет — «программное, облегчённое».\n");
+                    }
+                    b.append("Потеряно звука: ").append(s.lostAbuffers).append('\n');
+                }
+                m.release();
+            }
+        } catch (RuntimeException x) {
+            b.append("Нет данных: ").append(x);
+        }
+        b.append("\nДекодер: ").append("hw".equals(Prefs.decoder()) ? "аппаратный (принудительно)" : "sw".equals(Prefs.decoder()) ? "программный" : "lite".equals(Prefs.decoder()) ? "программный, облегчённый" : "авто");
+        b.append("\nЧтение: ").append(direct ? "напрямую по SMB" : "через сервер приложения");
+        b.append("\nРазмер файла: ").append(Ui.size(entry.size));
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Сведения")
+                .setMessage(b.toString())
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
+    /** All the episodes of the series, the playing one marked; choosing one switches to it without leaving the player. */
+    private void chooseEpisode() {
+        final List<Entry> list = playlist;
+        String[] names = new String[list.size()];
+        int current = -1;
+        for (int i = 0; i < names.length; i++) {
+            Entry e = list.get(i);
+            Catalog.Progress p = lib.catalog.progress(e.path);
+            String mark = p != null && p.watched() ? "   ✓" : p != null && p.started() ? "   " + Ui.time(p.position) : "";
+            names[i] = "S" + e.season + "E" + e.number + "   " + e.name + mark;
+            if (e.path.equals(entry.path)) current = i;
+        }
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Серии")
+                .setSingleChoiceItems(names, current, new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int which) {
+                        d.dismiss();
+                        Entry chosen = list.get(which);
+                        if (chosen.path.equals(entry.path)) return;
+                        saveProgress();
+                        trail.add(entry);
+                        play(chosen, false);
+                    }
+                })
+                .show();
     }
 
     private void saveProgress() {
@@ -387,17 +573,26 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
                 seekBy(step(event));
                 return true;
-            case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK:
                 if (event.getRepeatCount() == 0) chooseTrack(true);
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_CAPTIONS:
                 if (event.getRepeatCount() == 0) chooseTrack(false);
                 return true;
+            // Every remote has the d-pad and OK, not every one has Menu: up and down open the list of everything.
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_INFO:
-                if (event.getRepeatCount() == 0) chooseSpeed();
+                if (event.getRepeatCount() == 0) showMenu();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_NEXT:
+            case KeyEvent.KEYCODE_CHANNEL_UP:
+                if (event.getRepeatCount() == 0) goNext();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+            case KeyEvent.KEYCODE_CHANNEL_DOWN:
+                if (event.getRepeatCount() == 0) goPrevious();
                 return true;
             default:
                 return super.onKeyDown(keyCode, event);
@@ -457,7 +652,7 @@ public class PlayerActivity extends Activity {
         long shown = seekTarget >= 0 ? seekTarget : time;
         long len = length > 0 ? length : 0;
         bar.setProgress(len > 0 ? (int) (shown * 1000 / len) : 0);
-        timeView.setText(Ui.time(shown) + (len > 0 ? " / " + Ui.time(len) : "") + (paused ? "   ⏸" : ""));
+        timeView.setText(Ui.time(shown) + (len > 0 ? " / " + Ui.time(len) : "") + (paused ? "   ⏸" : "") + (shuffle ? "   🔀" : ""));
     }
 
     // MARK: - Leaving
@@ -466,33 +661,48 @@ public class PlayerActivity extends Activity {
         super.onPause();
         if (player != null && !released) {
             saveProgress();
-            if (!paused) player.pause();
+            if (!paused && !isFinishing()) player.pause();
         }
+    }
+
+    /** Back: saves the place and stops the picture on another thread, so leaving does not wait for a slow disk. */
+    @Override public void onBackPressed() {
+        stopPlayback();
+        finish();
+    }
+
+    private boolean stopping;
+
+    private void stopPlayback() {
+        if (stopping || player == null) return;
+        stopping = true;
+        saveProgress();
+        released = true;
+        h.removeCallbacksAndMessages(null);
+        final MediaPlayer p = player;
+        final LibVLC v = vlc;
+        try { p.setEventListener(null); } catch (RuntimeException ignored) { }
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    p.stop();
+                } catch (RuntimeException ignored) {
+                }
+                try {
+                    p.getVLCVout().detachViews();
+                    p.release();
+                    v.release();
+                } catch (RuntimeException ignored) {
+                }
+            }
+        }, "player-stop").start();
     }
 
     @Override protected void onDestroy() {
         super.onDestroy();
         h.removeCallbacksAndMessages(null);
         if (player == null) return;
-        saveProgress();
-        released = true;
-        final MediaPlayer p = player;
-        final LibVLC v = vlc;
-        try {
-            p.setEventListener(null);
-            p.getVLCVout().detachViews();
-        } catch (RuntimeException ignored) {
-        }
-        new Thread(new Runnable() {
-            @Override public void run() {
-                try {
-                    p.stop();
-                    p.release();
-                    v.release();
-                } catch (RuntimeException ignored) {
-                }
-            }
-        }).start();
+        stopPlayback();
         lib.refreshView();
     }
 }

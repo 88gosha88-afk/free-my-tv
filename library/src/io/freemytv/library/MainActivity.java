@@ -27,10 +27,20 @@ public class MainActivity extends Activity implements Library.Listener {
     private TextView status;
     private TextView moviesButton, showsButton;
     private String signature = "";
+    private Backdrop backdrop;
+    private long lastRebuild;
+    private boolean rebuildQueued, returning;
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final PosterCard.Focus focusHook = new PosterCard.Focus() {
+        @Override public void on(PosterCard card) { if (backdrop != null) backdrop.show(MainActivity.this, card.backdrop); }
+    };
+
+    private String look = "";
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         lib = Library.get(this);
+        look = Ui.refresh();
         getWindow().getDecorView().setBackgroundColor(Ui.BG);
 
         ScrollView scroll = new ScrollView(this);
@@ -74,7 +84,11 @@ public class MainActivity extends Activity implements Library.Listener {
         rows.setOrientation(LinearLayout.VERTICAL);
         rows.setClipChildren(false);
         root.addView(rows, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(scroll);
+        android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
+        backdrop = new Backdrop(this);
+        stage.addView(backdrop, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        stage.addView(scroll, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(stage);
         lib.refreshIfOld();
     }
 
@@ -95,9 +109,10 @@ public class MainActivity extends Activity implements Library.Listener {
 
     @Override protected void onStart() {
         super.onStart();
+        if (!look.equals(Ui.refresh())) { recreate(); return; }
         lib.listen(this);
-        signature = "";          // posters and positions may have changed while another screen was open
-        onChanged();
+        returning = true;
+        onChanged();             // the signature notices a changed position or a new poster; nothing changed, nothing is rebuilt
     }
 
     @Override protected void onStop() {
@@ -113,10 +128,24 @@ public class MainActivity extends Activity implements Library.Listener {
         status.setText(text.isEmpty() ? "" : text);
         status.setTextColor(lib.status().isEmpty() && (!problem.isEmpty() || noKey) ? Ui.WARN : Ui.DIM);
         // Rebuilding the rows takes the remote's focus away, so while someone is on a card it waits.
-        if (rows.hasFocus() && !signature.isEmpty()) return;
-        String sig = lib.catalog.all().size() + "|" + metaCount() + "|" + lib.catalog.continueWatching(30).size();
+        boolean back = returning;
+        returning = false;
+        if (rows.hasFocus() && !signature.isEmpty() && !back) return;
+        String sig = lib.catalog.version() + "|" + metaCount() + "|" + Prefs.showHistory() + "|" + Prefs.folders().size();
         if (sig.equals(signature)) return;
+        // While descriptions and posters keep arriving, the rows are rebuilt at most every two seconds.
+        long wait = lastRebuild + 2000 - System.currentTimeMillis();
+        if (!signature.isEmpty() && wait > 0 && !back) {
+            if (!rebuildQueued) {
+                rebuildQueued = true;
+                handler.postDelayed(new Runnable() {
+                    @Override public void run() { rebuildQueued = false; onChanged(); }
+                }, wait);
+            }
+            return;
+        }
         signature = sig;
+        lastRebuild = System.currentTimeMillis();
         rebuild();
     }
 
@@ -140,9 +169,11 @@ public class MainActivity extends Activity implements Library.Listener {
             rows.addView(empty, lp);
             return;
         }
-        List<View> cont = new ArrayList<>();
-        for (Entry e : lib.catalog.continueWatching(12)) cont.add(entryCard(e));
-        addRow("Продолжить просмотр", cont);
+        if (Prefs.showHistory()) {
+            List<View> cont = new ArrayList<>();
+            for (Entry e : lib.catalog.continueWatching(12)) cont.add(historyCard(e));
+            addRow("Продолжить просмотр", "удерживайте OK на карточке, чтобы убрать из истории", cont);
+        }
 
         // Newest first; a series counts once, by its newest episode.
         List<Entry> all = lib.catalog.all();
@@ -150,21 +181,44 @@ public class MainActivity extends Activity implements Library.Listener {
             @Override public int compare(Entry a, Entry b) { return Long.compare(b.mtime, a.mtime); }
         });
         Set<String> seen = new HashSet<>();
+        java.util.Map<String, Catalog.Show> byKey = new java.util.HashMap<>();
+        for (Catalog.Show s : lib.catalog.shows()) byKey.put(s.key, s);
         List<View> fresh = new ArrayList<>();
         for (Entry e : all) {
             if (fresh.size() >= 20) break;
             if (e.episode) {
                 if (!seen.add(e.key())) continue;
-                for (Catalog.Show s : lib.catalog.shows()) if (s.key.equals(e.key())) { fresh.add(showCard(s)); break; }
+                Catalog.Show s = byKey.get(e.key());
+                if (s != null) fresh.add(showCard(s));
             } else {
                 fresh.add(entryCard(e));
             }
         }
         addRow("Недавно добавлено", fresh);
+        addFolders();
+    }
+
+    /** The folders chosen in "Папки" as cards: OK opens the folder tree right there, to play any file in it. */
+    private void addFolders() {
+        List<View> cards = new ArrayList<>();
+        for (final io.freemytv.library.core.Folder f : Prefs.folders()) {
+            PosterCard card = Cards.blank(this);
+            card.onFocus = focusHook;
+            card.image.setImageDrawable(Ui.glassLit(this, 12));
+            card.set(f.name(), 0f, "📁");
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    startActivity(new Intent(MainActivity.this, FoldersActivity.class).putExtra("path", f.path));
+                }
+            });
+            cards.add(card);
+        }
+        addRow("Избранные папки", "добавляются в «Папки»: стрелка вправо на папке", cards);
     }
 
     private View entryCard(final Entry e) {
         PosterCard card = Cards.movie(this, null, lib, e);
+        card.onFocus = focusHook;
         card.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, DetailActivity.class).putExtra("path", e.path));
@@ -173,8 +227,39 @@ public class MainActivity extends Activity implements Library.Listener {
         return card;
     }
 
+    /** A card of "continue watching": a long press (or Menu) offers to take it out of the history. */
+    private View historyCard(final Entry e) {
+        final PosterCard card = (PosterCard) entryCard(e);
+        card.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) { askForget(e); return true; }
+        });
+        card.setOnKeyListener(new View.OnKeyListener() {
+            @Override public boolean onKey(View v, int keyCode, android.view.KeyEvent ev) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_MENU && ev.getAction() == android.view.KeyEvent.ACTION_UP) { askForget(e); return true; }
+                return false;
+            }
+        });
+        return card;
+    }
+
+    private void askForget(final Entry e) {
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(e.title)
+                .setItems(new String[] {"Убрать из истории", "Отметить просмотренным"}, new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) {
+                        if (which == 0) lib.catalog.forget(e.path); else lib.catalog.markWatched(e.path, true);
+                        signature = "";
+                        rows.clearFocus();
+                        onChanged();
+                    }
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private View showCard(final Catalog.Show s) {
         PosterCard card = Cards.show(this, null, lib, s);
+        card.onFocus = focusHook;
         card.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, DetailActivity.class).putExtra("show", s.key));
@@ -183,12 +268,22 @@ public class MainActivity extends Activity implements Library.Listener {
         return card;
     }
 
-    private void addRow(String title, List<View> cards) {
+    private void addRow(String title, List<View> cards) { addRow(title, "", cards); }
+
+    private void addRow(String title, String hint, List<View> cards) {
         if (cards.isEmpty()) return;
-        TextView h = Ui.bold(this, title, 20, Ui.TEXT);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.BOTTOM);
+        head.addView(Ui.bold(this, title, 20, Ui.TEXT));
+        if (!hint.isEmpty()) {
+            TextView t = Ui.text(this, hint, 13, Ui.DIM);
+            t.setPadding(Ui.dp(this, 14), 0, 0, Ui.dp(this, 2));
+            head.addView(t);
+        }
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         hl.topMargin = Ui.dp(this, 26);
-        rows.addView(h, hl);
+        rows.addView(head, hl);
         HorizontalScrollView hs = new HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
         hs.setClipChildren(false);

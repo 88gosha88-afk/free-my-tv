@@ -94,6 +94,30 @@ final class Prefs {
     static boolean builtin() { return sp.getBoolean("builtin", true); }
     static void setBuiltin(boolean v) { sp.edit().putBoolean("builtin", v).apply(); }
 
+    /** Whether the main screen shows "continue watching". */
+    static boolean showHistory() { return sp.getBoolean("history", true); }
+    static void setShowHistory(boolean v) { sp.edit().putBoolean("history", v).apply(); }
+
+    /** Shuffle in the player: random next episode (or film) instead of the next in order. */
+    static boolean shuffle() { return sp.getBoolean("shuffle", false); }
+    static void setShuffle(boolean v) { sp.edit().putBoolean("shuffle", v).apply(); }
+
+    /** "dark", "light" or "black" (pure black, no pictures). */
+    static String theme() { return sp.getString("theme", "dark"); }
+    static void setTheme(String v) { sp.edit().putString("theme", v).apply(); }
+
+    /** The background: "film" (the chosen film's picture), "aurora", "mountains", "dunes", "ocean" or "plain". */
+    static String scene() { return sp.getString("scene", "film"); }
+    static void setScene(String v) { sp.edit().putString("scene", v).apply(); }
+
+    /** Seconds of picture to read ahead; 0 = automatic (more for very big files). */
+    static int buffer() { return sp.getInt("buffer", 0); }
+    static void setBuffer(int v) { sp.edit().putInt("buffer", v).apply(); }
+
+    /** "auto", "hw" (force the chip's decoder) or "sw" (the processor only). */
+    static String decoder() { return sp.getString("decoder", "auto"); }
+    static void setDecoder(String v) { sp.edit().putString("decoder", v).apply(); }
+
     static String audio() { return sp.getString("audio", "ru"); }
     static void setAudio(String v) { sp.edit().putString("audio", v).apply(); }
 

@@ -10,6 +10,9 @@ public interface Source {
 
     long size(String path) throws IOException;
 
+    /** Deletes a file, or a folder with everything in it. Needs write access to the share. */
+    void delete(String path) throws IOException;
+
     /** The file's bytes from `offset` on; the caller closes the stream. */
     InputStream open(String path, long offset) throws IOException;
 }

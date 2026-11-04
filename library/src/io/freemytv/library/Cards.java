@@ -15,12 +15,15 @@ final class Cards {
 
     static int posterWidth(Context c) { return Ui.dp(c, 150); }
 
-    private static PosterCard blank(Context c) {
+    static PosterCard blank(Context c) {
         final PosterCard card = new PosterCard(c, posterWidth(c));
         card.setFocusable(true);
         card.setClickable(true);
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override public void onFocusChange(View v, boolean has) { card.setSelected(has); }
+            @Override public void onFocusChange(View v, boolean has) {
+                card.setSelected(has);
+                if (has && card.onFocus != null) card.onFocus.on(card);
+            }
         });
         return card;
     }
@@ -34,6 +37,7 @@ final class Cards {
         float fraction = p != null && p.started() && p.duration > 0 ? Math.min(1f, (float) p.position / p.duration) : 0f;
         String label = p != null && p.watched() ? "✓" : e.episode ? "S" + e.season + "E" + e.number : e.year > 0 ? String.valueOf(e.year) : "";
         card.set(name, fraction, label);
+        card.backdrop = m != null && m.found() ? m.backdrop : "";
         Posters.show(c, card.image, m != null && m.found() ? m.poster : "", "w342", name);
         return card;
     }
@@ -43,6 +47,7 @@ final class Cards {
         Tmdb.Meta m = lib.tmdb().cached(s.key);
         String name = m != null && m.found() && !m.title.isEmpty() ? m.title : s.title;
         card.set(name, 0f, s.episodes() + " сер.");
+        card.backdrop = m != null && m.found() ? m.backdrop : "";
         Posters.show(c, card.image, m != null && m.found() ? m.poster : "", "w342", name);
         return card;
     }

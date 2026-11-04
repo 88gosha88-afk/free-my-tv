@@ -60,6 +60,14 @@ final class SmbSource implements Source {
         return file(path, false).length();
     }
 
+    @Override public void delete(String path) throws IOException {
+        if (path.isEmpty()) throw new IOException("нельзя удалить корень диска");
+        SmbFile f = file(path, false);
+        if (!f.exists()) return;
+        if (f.isDirectory()) f = file(path, true);
+        f.delete();
+    }
+
     @SuppressWarnings("deprecation")
     @Override public InputStream open(String path, long offset) throws IOException {
         InputStream in = file(path, false).getInputStream();

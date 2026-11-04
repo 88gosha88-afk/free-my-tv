@@ -65,6 +65,29 @@ final class Posters {
         });
     }
 
+    interface Sink {
+        void got(Bitmap b);
+    }
+
+    /** A picture for a background: downloaded like a poster, then shrunk to a tiny copy that is drawn large (a cheap blur). */
+    static void backdrop(final Context c, final String path, final Sink sink) {
+        final String key = "bk" + path;
+        Bitmap have = CACHE.get(key);
+        if (have != null) { sink.got(have); return; }
+        POOL.execute(new Runnable() {
+            @Override public void run() {
+                Bitmap full = fetch(c, path, "w780");
+                if (full == null || full.getWidth() < 2) return;
+                final Bitmap small = Bitmap.createScaledBitmap(full, 64, Math.max(1, 64 * full.getHeight() / full.getWidth()), true);
+                if (small != full) full.recycle();
+                CACHE.put(key, small);
+                MAIN.post(new Runnable() {
+                    @Override public void run() { sink.got(small); }
+                });
+            }
+        });
+    }
+
     private static Bitmap fetch(Context c, String path, String size) {
         File dir = new File(c.getCacheDir(), "img");
         dir.mkdirs();

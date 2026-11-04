@@ -255,6 +255,40 @@ final class Library {
     }
 
     /** Leaves a folder or a file out of the library (its siblings stay). */
+    interface Done {
+        void on(String error);   // null when it worked
+    }
+
+    /** Deletes a file (with its subtitles and soundtracks) or a folder from the disk, then forgets it. */
+    void deleteFromDisk(final String path, final Done done) {
+        worker.execute(new Runnable() {
+            @Override public void run() {
+                String error = null;
+                try {
+                    Source s = source();
+                    List<String> more = new ArrayList<>();
+                    Entry e = catalog.byPath(path);
+                    if (e != null) more.addAll(e.extras);
+                    s.delete(path);
+                    for (String x : more) {
+                        try { s.delete(x); } catch (IOException ignored) { }
+                    }
+                    catalog.removePath(path);
+                } catch (IOException | RuntimeException x) {
+                    error = x.getMessage() != null ? x.getMessage() : x.getClass().getSimpleName();
+                    if (error.contains("denied") || error.contains("Access")) error += " (у гостя нет права записи на диск: включите запись в настройках общей папки на роутере или задайте логин в «Настройках»)";
+                }
+                final String result = error;
+                main.post(new Runnable() {
+                    @Override public void run() {
+                        changed(true);
+                        done.on(result);
+                    }
+                });
+            }
+        });
+    }
+
     void exclude(String path) {
         List<String> ex = Prefs.excluded();
         if (!ex.contains(path)) ex.add(path);

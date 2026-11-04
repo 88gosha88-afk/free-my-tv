@@ -29,6 +29,17 @@ public final class FileSource implements Source {
         return f.length();
     }
 
+    @Override public void delete(String path) throws IOException {
+        if (path.isEmpty()) throw new IOException("cannot delete the root");
+        remove(file(path));
+    }
+
+    private static void remove(File f) throws IOException {
+        File[] kids = f.listFiles();
+        if (kids != null) for (File k : kids) remove(k);
+        if (f.exists() && !f.delete()) throw new IOException("cannot delete " + f.getName());
+    }
+
     @Override public InputStream open(String path, long offset) throws IOException {
         FileInputStream in = new FileInputStream(file(path));
         long left = offset;

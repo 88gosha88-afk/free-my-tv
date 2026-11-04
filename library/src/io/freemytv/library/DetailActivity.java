@@ -36,9 +36,12 @@ public class DetailActivity extends Activity {
     private int episodeMetaSeason = -1;
     private boolean lookedUp;
 
+    private String look = "";
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         lib = Library.get(this);
+        look = Ui.refresh();
         getWindow().getDecorView().setBackgroundColor(Ui.BG);
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -46,11 +49,18 @@ public class DetailActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(Ui.dp(this, 48), Ui.dp(this, 32), Ui.dp(this, 48), Ui.dp(this, 40));
         scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(scroll);
+        android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
+        backdrop = new Backdrop(this);
+        stage.addView(backdrop, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        stage.addView(scroll, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(stage);
     }
+
+    private Backdrop backdrop;
 
     @Override protected void onStart() {
         super.onStart();
+        if (!look.equals(Ui.refresh())) { recreate(); return; }
         load();
         render();
     }
@@ -111,12 +121,14 @@ public class DetailActivity extends Activity {
         page.removeAllViews();
         Tmdb.Meta m = meta();
         String title = m != null && m.found() && !m.title.isEmpty() ? m.title : movie != null ? movie.title : show.title;
+        backdrop.show(this, m != null && m.found() ? m.backdrop : "");
 
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         ImageView poster = new ImageView(this);
         poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        poster.setBackground(Ui.round(Ui.SURFACE, 10, this));
+        poster.setBackground(Ui.round(Ui.SURFACE, 14, this));
+        Ui.roundCorners(poster, Ui.dp(this, 14));
         Posters.show(this, poster, m != null && m.found() ? m.poster : "", "w500", title);
         head.addView(poster, new LinearLayout.LayoutParams(Ui.dp(this, 200), Ui.dp(this, 300)));
 
@@ -149,6 +161,12 @@ public class DetailActivity extends Activity {
         LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         bl.topMargin = Ui.dp(this, 20);
         info.addView(buttons, bl);
+        // The second row: the buttons that are not about playing, so no label is squeezed.
+        LinearLayout more = new LinearLayout(this);
+        more.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        ml.topMargin = Ui.dp(this, 12);
+        info.addView(more, ml);
         TextView primary = null;
         if (movie != null) {
             Catalog.Progress p = lib.catalog.progress(movie.path);
@@ -170,10 +188,19 @@ public class DetailActivity extends Activity {
                 primary = addButton(buttons, (resume ? "▶ Продолжить S" : "▶ Далее: S") + next.season + "E" + next.number, play(next, false));
             }
         }
-        addButton(buttons, "Название…", new Runnable() {
+        if (movie != null) {
+            addButton(more, "Удалить…", new Runnable() {
+                @Override public void run() {
+                    Deleter.ask(DetailActivity.this, lib, movie.path, false, new Runnable() {
+                        @Override public void run() { finish(); }
+                    });
+                }
+            });
+        }
+        addButton(more, "Название…", new Runnable() {
             @Override public void run() { askTitle(); }
         });
-        addButton(buttons, "Описание…", new Runnable() {
+        addButton(more, "Описание…", new Runnable() {
             @Override public void run() { pickMeta(movie != null ? movie.title : show.title); }
         });
         head.addView(info, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -217,7 +244,7 @@ public class DetailActivity extends Activity {
                     render();
                 }
             });
-            if (s == season) t.setBackground(Ui.focusBackground(this, Ui.SURFACE_HI, Ui.ACCENT, 10));
+            if (s == season) t.setBackground(Ui.glassFocus(this, 14, true));
         }
         hs.addView(seasons);
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -276,7 +303,7 @@ public class DetailActivity extends Activity {
             row.setEllipsize(android.text.TextUtils.TruncateAt.END);
             row.setFocusable(true);
             row.setClickable(true);
-            row.setBackground(Ui.focusBackground(this, Ui.BG, Ui.SURFACE_HI, 8));
+            row.setBackground(Ui.rowFocus(this, 10));
             row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override public void onFocusChange(View v, boolean has) {
                     if (has && episodeInfo != null) episodeInfo.setText(about.isEmpty() ? e.name : about);

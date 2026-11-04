@@ -137,6 +137,27 @@ public final class Scanner {
         }
     }
 
+    /** An Entry for a video that is not in the library (opened from the folder tree): named by its own path. */
+    public static Entry loose(String full, long size, long mtime) {
+        Entry e = new Entry();
+        e.path = full;
+        int slash = full.lastIndexOf('/');
+        e.name = slash < 0 ? full : full.substring(slash + 1);
+        e.size = size;
+        e.mtime = mtime;
+        List<String> folders = new ArrayList<>();
+        if (slash > 0) for (String part : full.substring(0, slash).split("/")) if (!part.isEmpty()) folders.add(part);
+        NameParser.Parsed p = NameParser.parse(folders, e.name, false);
+        e.episode = p.episode;
+        e.title = p.title;
+        e.year = p.year;
+        e.season = p.season;
+        e.number = p.number;
+        e.rawTitle = e.title;
+        e.rawYear = e.year;
+        return e;
+    }
+
     static boolean skipName(String name) {
         return name.startsWith(".") || name.endsWith(".part") || name.endsWith("~") || SKIP.contains(name.toLowerCase(Locale.ROOT));
     }
