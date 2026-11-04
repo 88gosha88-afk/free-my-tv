@@ -47,6 +47,13 @@ final class PosterCard extends FrameLayout {
         });
         image.setClipToOutline(true);
         addView(image, new LayoutParams(posterWidth, posterHeight));
+        // A soft sheen across the top of the poster, like light on glass.
+        View sheen = new View(c);
+        android.graphics.drawable.GradientDrawable sd = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x2EFFFFFF, 0x00FFFFFF});
+        sd.setCornerRadii(new float[] {radius, radius, radius, radius, 0, 0, 0, 0});
+        sheen.setBackground(sd);
+        addView(sheen, new LayoutParams(posterWidth, posterHeight / 3));
         title = Ui.text(c, "", 14, Ui.DIM);
         title.setMaxLines(2);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -86,6 +93,7 @@ final class PosterCard extends FrameLayout {
     @Override public void setSelected(boolean selected) {
         super.setSelected(selected);
         title.setTextColor(selected ? Ui.TEXT : Ui.DIM);
+        animate().scaleX(selected ? 1.05f : 1f).scaleY(selected ? 1.05f : 1f).setDuration(140).start();
         invalidate();
     }
 

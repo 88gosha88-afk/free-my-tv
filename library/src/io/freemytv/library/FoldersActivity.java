@@ -49,7 +49,7 @@ public class FoldersActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 20));
-        root.addView(Ui.bold(this, "Папки медиатеки", 28, Ui.TEXT));
+        root.addView(Ui.title(this, "Папки медиатеки", 34, Ui.TEXT));
         TextView hint = Ui.text(this, "OK на папке — открыть, на видео — смотреть.  Стрелка вправо (или удержание OK) — добавить папку в избранное на главном экране (файлы из неё попадут в медиатеку) или исключить.", 14, Ui.DIM);
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         hl.topMargin = Ui.dp(this, 6);
@@ -62,6 +62,9 @@ public class FoldersActivity extends Activity {
         root.addView(message);
 
         list = new ListView(this);
+        list.setBackground(Ui.panel(this, 22));
+        list.setPadding(Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10), Ui.dp(this, 10));
+        list.setClipToPadding(false);
         list.setDivider(null);
         list.setSelector(new android.graphics.drawable.ColorDrawable(0));
         list.setItemsCanFocus(false);
@@ -239,7 +242,7 @@ public class FoldersActivity extends Activity {
                 @Override public void run() { go(path); }
             }); }
         });
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle(n.name)
                 .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) { actions.get(which).run(); }

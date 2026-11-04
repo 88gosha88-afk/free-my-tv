@@ -47,7 +47,7 @@ public class LibraryActivity extends Activity implements Library.Listener {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), 0);
-        root.addView(Ui.bold(this, shows ? "Сериалы" : "Фильмы", 28, Ui.TEXT));
+        root.addView(Ui.title(this, shows ? "Сериалы" : "Фильмы", 34, Ui.TEXT));
         count = Ui.text(this, "", 14, Ui.DIM);
         root.addView(count);
 
@@ -164,7 +164,7 @@ public class LibraryActivity extends Activity implements Library.Listener {
         field.setSingleLine(true);
         field.setText(query);
         field.setHint("Часть названия");
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Поиск")
                 .setView(field)
                 .setPositiveButton("Найти", new DialogInterface.OnClickListener() {

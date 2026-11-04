@@ -12,7 +12,7 @@ final class Deleter {
     static void ask(final Activity a, final Library lib, final String path, boolean dir, final Runnable after) {
         int i = path.lastIndexOf('/');
         String name = i < 0 ? path : path.substring(i + 1);
-        new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(a)
                 .setTitle("Удалить с диска?")
                 .setMessage(name + (dir ? "\n\nПапка будет удалена вместе со всем, что в ней лежит." : "")
                         + "\n\nФайл исчезнет с диска насовсем, вернуть его нельзя.")
@@ -23,7 +23,7 @@ final class Deleter {
                         lib.deleteFromDisk(path, new Library.Done() {
                             @Override public void on(String error) {
                                 if (error != null) {
-                                    new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                                    new Ui.Glass(a)
                                             .setTitle("Не удалось удалить").setMessage(error).setPositiveButton("OK", null).show();
                                 } else {
                                     Toast.makeText(a, "Удалено", Toast.LENGTH_SHORT).show();

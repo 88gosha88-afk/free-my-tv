@@ -72,18 +72,61 @@ final class Ui {
 
     static TextView bold(Context c, String s, float sp, int color) {
         TextView t = text(c, s, sp, color);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         return t;
+    }
+
+    /** A big screen title in a light weight, as on Apple's screens. */
+    static TextView title(Context c, String s, float sp, int color) {
+        TextView t = text(c, s, sp, color);
+        t.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        t.setLetterSpacing(0.01f);
+        return t;
+    }
+
+    /** A dialog in a panel of dark glass, whatever the theme. */
+    static final class Glass extends android.app.AlertDialog.Builder {
+        Glass(Context c) { super(c, android.R.style.Theme_DeviceDefault_Dialog_Alert); }
+
+        @Override public android.app.AlertDialog show() {
+            android.app.AlertDialog d = create();
+            android.view.Window w = d.getWindow();
+            if (w != null) {
+                GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0xF2232A3C, 0xF2161B29});
+                g.setCornerRadius(dp(getContext(), 22));
+                g.setStroke(Math.max(1, dp(getContext(), 1)), 0x40FFFFFF);
+                w.setBackgroundDrawable(g);
+                w.setDimAmount(0.6f);
+            }
+            d.show();
+            return d;
+        }
+    }
+
+    /** A larger panel of glass that holds a group of things (a card of settings, a film's header). */
+    static GradientDrawable panel(Context c, float radiusDp) {
+        return glassShape(c, radiusDp, g(0x26), g(0x0E), g(0x30), 1f);
+    }
+
+    /** The button the remote is on swells a little. */
+    static void pop(View v) {
+        v.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override public void onFocusChange(View view, boolean has) {
+                view.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(140).start();
+            }
+        });
     }
 
     /** A focusable button of frosted glass: lighter, with a thin bright edge, while the remote is on it. */
     static TextView button(Context c, String label) {
         TextView t = text(c, label, 17, TEXT);
+        t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(c, 22), dp(c, 12), dp(c, 22), dp(c, 12));
+        t.setPadding(dp(c, 24), dp(c, 12), dp(c, 24), dp(c, 12));
         t.setFocusable(true);
         t.setClickable(true);
-        t.setBackground(glassFocus(c, 14, false));
+        t.setBackground(glassFocus(c, 26, false));
+        pop(t);
         return t;
     }
 

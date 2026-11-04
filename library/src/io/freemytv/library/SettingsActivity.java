@@ -34,8 +34,11 @@ public class SettingsActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 40));
-        scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        page.setPadding(Ui.dp(this, 36), Ui.dp(this, 26), Ui.dp(this, 36), Ui.dp(this, 32));
+        page.setBackground(Ui.panel(this, 26));
+        android.widget.FrameLayout.LayoutParams pl = new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        pl.setMargins(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 36));
+        scroll.addView(page, pl);
         android.widget.FrameLayout stage = new android.widget.FrameLayout(this);
         stage.addView(new Backdrop(this), new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         stage.addView(scroll, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -51,7 +54,7 @@ public class SettingsActivity extends Activity {
         final int row = keepRow;
         keepRow = -1;
         page.removeAllViews();
-        page.addView(Ui.bold(this, "Настройки", 28, Ui.TEXT));
+        page.addView(Ui.title(this, "Настройки", 34, Ui.TEXT));
         row("Адрес диска", Prefs.smbUrl(), new Runnable() {
             @Override public void run() {
                 ask("Адрес диска", "smb://192.168.1.1/Имя папки/", Prefs.smbUrl(), false, new Value() {
@@ -114,7 +117,7 @@ public class SettingsActivity extends Activity {
         });
         row("Очистить историю просмотра", "", new Runnable() {
             @Override public void run() {
-                new AlertDialog.Builder(SettingsActivity.this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                new Ui.Glass(SettingsActivity.this)
                         .setTitle("Очистить историю?")
                         .setMessage("Пропадёт «Продолжить просмотр». Отметки «просмотрено» останутся.")
                         .setPositiveButton("Очистить", new DialogInterface.OnClickListener() {
@@ -211,7 +214,7 @@ public class SettingsActivity extends Activity {
         field.setHint(hint);
         field.setSelection(field.getText().length());
         if (secret) field.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle(title)
                 .setView(field)
                 .setPositiveButton("Сохранить", new DialogInterface.OnClickListener() {

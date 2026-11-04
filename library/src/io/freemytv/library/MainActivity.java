@@ -53,7 +53,7 @@ public class MainActivity extends Activity implements Library.Listener {
         root.setPadding(Ui.dp(this, 48), Ui.dp(this, 28), Ui.dp(this, 48), Ui.dp(this, 40));
         scroll.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        root.addView(Ui.bold(this, "Моя медиатека", 30, Ui.TEXT));
+        root.addView(Ui.title(this, "Моя медиатека", 36, Ui.TEXT));
         status = Ui.text(this, "", 14, Ui.DIM);
         LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         sl.topMargin = Ui.dp(this, 6);
@@ -243,7 +243,7 @@ public class MainActivity extends Activity implements Library.Listener {
     }
 
     private void askForget(final Entry e) {
-        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle(e.title)
                 .setItems(new String[] {"Убрать из истории", "Отметить просмотренным"}, new android.content.DialogInterface.OnClickListener() {
                     @Override public void onClick(android.content.DialogInterface d, int which) {

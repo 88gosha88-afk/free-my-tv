@@ -125,6 +125,8 @@ public class DetailActivity extends Activity {
 
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setBackground(Ui.panel(this, 26));
+        head.setPadding(Ui.dp(this, 22), Ui.dp(this, 22), Ui.dp(this, 22), Ui.dp(this, 22));
         ImageView poster = new ImageView(this);
         poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
         poster.setBackground(Ui.round(Ui.SURFACE, 14, this));
@@ -135,7 +137,7 @@ public class DetailActivity extends Activity {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(Ui.dp(this, 28), 0, 0, 0);
-        info.addView(Ui.bold(this, title, 30, Ui.TEXT));
+        info.addView(Ui.title(this, title, 34, Ui.TEXT));
         StringBuilder sub = new StringBuilder();
         int year = m != null && m.found() && m.year > 0 ? m.year : movie != null ? movie.year : show.year;
         if (year > 0) sub.append(year);
@@ -333,7 +335,7 @@ public class DetailActivity extends Activity {
         field.setSingleLine(true);
         field.setText(movie != null ? movie.title : show.title);
         field.setHint("Как называется");
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Название для поиска описания")
                 .setView(field)
                 .setPositiveButton("Сохранить", new DialogInterface.OnClickListener() {
@@ -370,7 +372,7 @@ public class DetailActivity extends Activity {
         field.setSingleLine(true);
         field.setText(start);
         field.setHint("Название фильма или сериала");
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Что искать в TMDB")
                 .setView(field)
                 .setPositiveButton("Найти", new DialogInterface.OnClickListener() {
@@ -416,7 +418,7 @@ public class DetailActivity extends Activity {
             labels[i] = m.title + (m.year > 0 ? " (" + m.year + ")" : "") + " — " + what
                     + (m.original.isEmpty() || m.original.equals(m.title) ? "" : "\n" + m.original) + (over.isEmpty() ? "" : "\n" + over);
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Выберите подходящее")
                 .setItems(labels, new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) {

@@ -386,7 +386,7 @@ public class PlayerActivity extends Activity {
         actions.add(new Runnable() { @Override public void run() { chooseSpeed(); } });
         labels.add("Сведения о воспроизведении…");
         actions.add(new Runnable() { @Override public void run() { showStats(); } });
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle(titleOf(entry))
                 .setItems(labels.toArray(new String[0]), new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) { actions.get(which).run(); }
@@ -427,7 +427,7 @@ public class PlayerActivity extends Activity {
         b.append("\nДекодер: ").append("hw".equals(Prefs.decoder()) ? "аппаратный (принудительно)" : "sw".equals(Prefs.decoder()) ? "программный" : "lite".equals(Prefs.decoder()) ? "программный, облегчённый" : "авто");
         b.append("\nЧтение: ").append(direct ? "напрямую по SMB" : "через сервер приложения");
         b.append("\nРазмер файла: ").append(Ui.size(entry.size));
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Сведения")
                 .setMessage(b.toString())
                 .setPositiveButton("OK", null)
@@ -446,7 +446,7 @@ public class PlayerActivity extends Activity {
             names[i] = "S" + e.season + "E" + e.number + "   " + e.name + mark;
             if (e.path.equals(entry.path)) current = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Серии")
                 .setSingleChoiceItems(names, current, new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) {
@@ -520,7 +520,7 @@ public class PlayerActivity extends Activity {
             names[i] = t.id < 0 ? "Выключены" : t.name;
             if (t.id == current) checked = i;
         }
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle(audio ? "Озвучка" : "Субтитры")
                 .setSingleChoiceItems(names, checked, new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) {
@@ -537,7 +537,7 @@ public class PlayerActivity extends Activity {
         String[] names = {"0.75×", "Обычная", "1.25×", "1.5×"};
         int checked = 1;
         for (int i = 0; i < rates.length; i++) if (Math.abs(player.getRate() - rates[i]) < 0.01f) checked = i;
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        new Ui.Glass(this)
                 .setTitle("Скорость")
                 .setSingleChoiceItems(names, checked, new DialogInterface.OnClickListener() {
                     @Override public void onClick(DialogInterface d, int which) {
