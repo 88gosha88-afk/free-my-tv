@@ -93,7 +93,6 @@ final class PosterCard extends FrameLayout {
     @Override public void setSelected(boolean selected) {
         super.setSelected(selected);
         title.setTextColor(selected ? Ui.TEXT : Ui.DIM);
-        animate().scaleX(selected ? 1.05f : 1f).scaleY(selected ? 1.05f : 1f).setDuration(140).start();
         invalidate();
     }
 

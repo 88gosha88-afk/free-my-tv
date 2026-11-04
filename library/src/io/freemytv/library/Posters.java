@@ -70,15 +70,18 @@ final class Posters {
     }
 
     /** A picture for a background: downloaded like a poster, then shrunk to a tiny copy that is drawn large (a cheap blur). */
-    static void backdrop(final Context c, final String path, final Sink sink) {
-        final String key = "bk" + path;
+    static void backdrop(Context c, String path, Sink sink) { backdrop(c, path, 64, sink); }
+
+    /** `width` 64 is a pure colour wash; a few hundred pixels still shows the picture, softly (for a film's own page). */
+    static void backdrop(final Context c, final String path, final int width, final Sink sink) {
+        final String key = "bk" + width + path;
         Bitmap have = CACHE.get(key);
         if (have != null) { sink.got(have); return; }
         POOL.execute(new Runnable() {
             @Override public void run() {
                 Bitmap full = fetch(c, path, "w780");
                 if (full == null || full.getWidth() < 2) return;
-                final Bitmap small = Bitmap.createScaledBitmap(full, 64, Math.max(1, 64 * full.getHeight() / full.getWidth()), true);
+                final Bitmap small = Bitmap.createScaledBitmap(full, width, Math.max(1, width * full.getHeight() / full.getWidth()), true);
                 if (small != full) full.recycle();
                 CACHE.put(key, small);
                 MAIN.post(new Runnable() {

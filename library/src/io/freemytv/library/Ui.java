@@ -108,14 +108,6 @@ final class Ui {
         return glassShape(c, radiusDp, g(0x26), g(0x0E), g(0x30), 1f);
     }
 
-    /** The button the remote is on swells a little. */
-    static void pop(View v) {
-        v.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override public void onFocusChange(View view, boolean has) {
-                view.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(140).start();
-            }
-        });
-    }
 
     /** A focusable button of frosted glass: lighter, with a thin bright edge, while the remote is on it. */
     static TextView button(Context c, String label) {
@@ -126,7 +118,6 @@ final class Ui {
         t.setFocusable(true);
         t.setClickable(true);
         t.setBackground(glassFocus(c, 26, false));
-        pop(t);
         return t;
     }
 
