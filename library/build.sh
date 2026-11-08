@@ -17,6 +17,14 @@ fi
 BT="$SDK/build-tools/$(ls "$SDK/build-tools" | sort -V | tail -1)"
 AJ="$(ls -d "$SDK"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1 || true)"
 [ -f "${AJ:-}" ] || { echo "Android platform not found. Run: sdkmanager \"platforms;android-34\""; exit 1; }
+# The Android build tools (d8) are older than the newest Java: on Java 22 and later d8 crashes inside itself
+# (NullPointerException in R8). Use a Java 17, 21 or 11 when the Mac has one; JAVA_HOME wins if it is set.
+if [ -z "${JAVA_HOME:-}" ] && [ -x /usr/libexec/java_home ]; then
+  for v in 17 21 11; do
+    J="$(/usr/libexec/java_home -v "$v" 2>/dev/null || true)"
+    if [ -n "$J" ] && [ -x "$J/bin/javac" ]; then export JAVA_HOME="$J"; echo "Using Java $v ($J)"; break; fi
+  done
+fi
 JAVAC="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
 KEYTOOL="${JAVA_HOME:+$JAVA_HOME/bin/}keytool"
 command -v "$JAVAC" >/dev/null 2>&1 || { echo "JDK not found. Install JDK 17 and set JAVA_HOME."; exit 1; }

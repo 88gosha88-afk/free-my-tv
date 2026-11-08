@@ -159,6 +159,18 @@ public class SettingsActivity extends Activity {
                 render();
             }
         });
+        row("Язык Android (системные настройки)", "", opener("android.settings.LOCALE_SETTINGS",
+                "com.android.settings/.LanguageSettings", "com.android.settings/.Settings$LanguageAndInputSettingsActivity",
+                "com.android.settings/.Settings$LocalePickerActivity"));
+        row("Параметры разработчика Android (отладка по сети)", "", opener("android.settings.APPLICATION_DEVELOPMENT_SETTINGS",
+                "com.android.settings/.DevelopmentSettings", "com.android.settings/.Settings$DevelopmentSettingsDashboardActivity",
+                "com.android.settings/.Settings$DevelopmentSettingsActivity",
+                "com.android.tv.settings/.system.development.DevelopmentActivity", "com.android.tv.settings/.system.DevelopmentActivity"));
+        row("Все настройки Android", "", opener("android.settings.SETTINGS",
+                "com.android.settings/.Settings", "com.android.tv.settings/.MainSettings", "com.android.settings/.HWSettings"));
+        row("Найти экраны настроек в системе проектора…", "", new Runnable() {
+            @Override public void run() { findSystemScreens(); }
+        });
         row("Проверить подключение к диску", "", new Runnable() {
             @Override public void run() { check(); }
         });
@@ -187,6 +199,88 @@ public class SettingsActivity extends Activity {
             case "plain": return "однотонный";
             default: return "картинка выбранного фильма";
         }
+    }
+
+    /** Opens a screen of the system's own settings: for a projector or a box whose menu hides it (language, developer options). */
+    private Runnable opener(final String action, final String... components) {
+        return new Runnable() {
+            @Override public void run() {
+                RuntimeException last = null;
+                try {
+                    startActivity(new android.content.Intent(action).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                    return;
+                } catch (RuntimeException e) {
+                    last = e;
+                }
+                // The maker may have cut the standard screen out: try the settings' own screens by name.
+                for (String c : components) {
+                    try {
+                        android.content.Intent i = new android.content.Intent().setComponent(android.content.ComponentName.unflattenFromString(c));
+                        startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                        return;
+                    } catch (RuntimeException e) {
+                        last = e;
+                    }
+                }
+                result.setTextColor(Ui.WARN);
+                result.setText("Этот экран на устройстве не открывается (" + last.getClass().getSimpleName()
+                        + "). Нажмите «Найти экраны настроек в системе проектора…»: там список того, что есть.");
+            }
+        };
+    }
+
+    /** Lists the settings-like screens that any app may open on this device, and opens the one picked. */
+    private void findSystemScreens() {
+        result.setTextColor(Ui.DIM);
+        result.setText("Ищу…");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final List<String> names = new java.util.ArrayList<>();
+                final List<android.content.ComponentName> targets = new java.util.ArrayList<>();
+                try {
+                    android.content.pm.PackageManager pm = getPackageManager();
+                    for (android.content.pm.PackageInfo p : pm.getInstalledPackages(android.content.pm.PackageManager.GET_ACTIVITIES)) {
+                        if (p.activities == null) continue;
+                        for (android.content.pm.ActivityInfo a : p.activities) {
+                            if (!a.exported || !a.enabled) continue;
+                            String key = (a.name + " " + a.packageName).toLowerCase(java.util.Locale.ROOT);
+                            if (!(key.contains("setting") || key.contains("develop") || key.contains("locale") || key.contains("language")
+                                    || key.contains("about"))) continue;
+                            String label = String.valueOf(a.loadLabel(pm));
+                            int dot = a.name.lastIndexOf('.');
+                            names.add(label + "  ·  " + a.packageName + "  " + (dot >= 0 ? a.name.substring(dot) : a.name));
+                            targets.add(new android.content.ComponentName(a.packageName, a.name));
+                            if (names.size() >= 80) break;
+                        }
+                    }
+                } catch (RuntimeException ignored) {
+                }
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        if (names.isEmpty()) {
+                            result.setTextColor(Ui.WARN);
+                            result.setText("Система не показывает приложению ни одного такого экрана.");
+                            return;
+                        }
+                        result.setText("Найдено экранов: " + names.size());
+                        new Ui.Glass(SettingsActivity.this)
+                                .setTitle("Экраны настроек в системе")
+                                .setItems(names.toArray(new String[0]), new DialogInterface.OnClickListener() {
+                                    @Override public void onClick(DialogInterface d, int which) {
+                                        try {
+                                            startActivity(new android.content.Intent().setComponent(targets.get(which))
+                                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                                        } catch (RuntimeException e) {
+                                            result.setTextColor(Ui.WARN);
+                                            result.setText("Не открылся: " + e.getClass().getSimpleName());
+                                        }
+                                    }
+                                })
+                                .show();
+                    }
+                });
+            }
+        }).start();
     }
 
     private interface Value {
